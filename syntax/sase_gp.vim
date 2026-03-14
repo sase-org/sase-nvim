@@ -69,6 +69,10 @@ syn match saseGpEntryNumber /^\s\+(\d\+)/
 " --- Proposed entry numbers: (1a), (2b) ---
 syn match saseGpProposedEntry /^\s\+(\d\+[a-z])/
 
+" --- Entry numbers in status lines (after | pipe) ---
+syn match saseGpEntryNumber /\%(|\s\+\)\@<=(\d\+)/
+syn match saseGpProposedEntry /\%(|\s\+\)\@<=(\d\+[a-z])/
+
 " --- Timestamps: [YYmmdd_HHMMSS] ---
 syn match saseGpTimestamp /\[\d\{6}_\d\{6}\]/
 
@@ -82,6 +86,9 @@ syn match saseGpInlineStarting /\<STARTING\>/
 
 " --- Duration: (1m23s) ---
 syn match saseGpDuration /(\d\+m\d\+s)/
+
+" --- Entry reference suffixes: (2a) or (3) after " - " ---
+syn match saseGpEntryRef /\%(- \)\@<=(\d\+[a-z]\?)/
 
 " --- Suffix markers (compound prefixes before simple ones) ---
 syn match saseGpSuffixPendingDead   /(?\$:[^)]*)/
@@ -147,8 +154,8 @@ hi def saseGpTestTarget          guifg=#AFD75F gui=bold ctermfg=149 cterm=bold
 " Entry numbers: bold gold
 hi def saseGpEntryNumber         guifg=#D7AF5F gui=bold ctermfg=179 cterm=bold
 
-" Proposed entries: bold pink
-hi def saseGpProposedEntry       guifg=#FF87AF gui=bold ctermfg=211 cterm=bold
+" Proposed entries: bold gold (same as regular entries, matching TUI)
+hi def saseGpProposedEntry       guifg=#D7AF5F gui=bold ctermfg=179 cterm=bold
 
 " Timestamps: purple
 hi def saseGpTimestamp           guifg=#AF87D7 ctermfg=140
@@ -174,6 +181,9 @@ hi def saseGpSuffixRejected      guifg=#FF5F5F guibg=#444444 gui=bold ctermfg=20
 hi def saseGpSuffixSummarize     guifg=#FFFFFF guibg=#008B8B gui=bold ctermfg=231 ctermbg=30 cterm=bold
 hi def saseGpSuffixMetahook      guifg=#FFFFFF guibg=#8B008B gui=bold ctermfg=231 ctermbg=90 cterm=bold
 hi def saseGpSuffixPendingDead   guifg=#FFD700 guibg=#444444 gui=bold ctermfg=220 ctermbg=238 cterm=bold
+
+" Entry reference suffixes: bold pink
+hi def saseGpEntryRef            guifg=#FF87AF gui=bold ctermfg=211 cterm=bold
 
 " Reviewer types: bold gold
 hi def saseGpReviewerType        guifg=#D7AF5F gui=bold ctermfg=179 cterm=bold
