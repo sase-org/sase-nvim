@@ -19,15 +19,21 @@ local function resolve_schema(name, on_resolved)
 end
 
 --- Apply a single schema→globs mapping to yamlls.
+--- Updates both the stored config (for future starts) and any running clients.
 local function apply_schema(schema, globs)
   vim.schedule(function()
-    vim.lsp.config("yamlls", {
-      settings = {
-        yaml = {
-          schemas = { [schema] = globs },
-        },
-      },
-    })
+    local new_settings = { yaml = { schemas = { [schema] = globs } } }
+
+    -- Update config for future client starts.
+    vim.lsp.config("yamlls", { settings = new_settings })
+
+    -- Notify any already-running yamlls clients.
+    -- yamlls uses a pull model: it ignores the notification payload and
+    -- sends workspace/configuration back to fetch updated settings.
+    for _, client in ipairs(vim.lsp.get_clients({ name = "yamlls" })) do
+      client.settings = vim.tbl_deep_extend("force", client.settings or {}, new_settings)
+      client:notify("workspace/didChangeConfiguration", { settings = client.settings })
+    end
   end)
 end
 
