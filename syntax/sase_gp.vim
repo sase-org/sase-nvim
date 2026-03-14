@@ -126,23 +126,23 @@ hi def saseGpSubFieldLabel       guifg=#87D7FF gui=bold ctermfg=117 cterm=bold
 " Name value: bold cyan-green
 hi def saseGpNameValue           guifg=#00D7AF gui=bold ctermfg=43 cterm=bold
 
-" Status values
-hi def saseGpStatusWIP           guifg=#87CEEB ctermfg=117
-hi def saseGpStatusDraft         guifg=#FFD700 ctermfg=220
-hi def saseGpStatusReady         guifg=#87D700 ctermfg=112
-hi def saseGpStatusMailed        guifg=#00D787 ctermfg=42
-hi def saseGpStatusSubmitted     guifg=#00AF00 ctermfg=34
-hi def saseGpStatusReverted      guifg=#808080 ctermfg=244
-hi def saseGpStatusArchived      guifg=#606060 ctermfg=240
+" Status values (bold, matching TUI)
+hi def saseGpStatusWIP           guifg=#87CEEB gui=bold ctermfg=117 cterm=bold
+hi def saseGpStatusDraft         guifg=#FFD700 gui=bold ctermfg=220 cterm=bold
+hi def saseGpStatusReady         guifg=#87D700 gui=bold ctermfg=112 cterm=bold
+hi def saseGpStatusMailed        guifg=#00D787 gui=bold ctermfg=42 cterm=bold
+hi def saseGpStatusSubmitted     guifg=#00AF00 gui=bold ctermfg=34 cterm=bold
+hi def saseGpStatusReverted      guifg=#808080 gui=bold ctermfg=244 cterm=bold
+hi def saseGpStatusArchived      guifg=#606060 gui=bold ctermfg=240 cterm=bold
 
-" Parent value: cyan-green
-hi def saseGpParentValue         guifg=#00D7AF ctermfg=43
+" Parent value: bold cyan-green
+hi def saseGpParentValue         guifg=#00D7AF gui=bold ctermfg=43 cterm=bold
 
 " CL/PR/BUG links: bold underline blue
 hi def saseGpLinkValue           guifg=#569CD6 gui=bold,underline ctermfg=75 cterm=bold,underline
 
-" Test targets: light green
-hi def saseGpTestTarget          guifg=#AFD75F ctermfg=149
+" Test targets: bold light green
+hi def saseGpTestTarget          guifg=#AFD75F gui=bold ctermfg=149 cterm=bold
 
 " Entry numbers: bold gold
 hi def saseGpEntryNumber         guifg=#D7AF5F gui=bold ctermfg=179 cterm=bold
@@ -194,8 +194,8 @@ hi def saseGpURL                 guifg=#569CD6 gui=underline ctermfg=75 cterm=un
 " Draft marker: bold gold
 hi def saseGpDraftMarker         guifg=#FFD700 gui=bold ctermfg=220 cterm=bold
 
-" RUNNING entries: workspace number in cyan
-hi def saseGpRunningWorkspace    guifg=#5FD7FF gui=bold ctermfg=81 cterm=bold
+" RUNNING entries: workspace number in cyan (no bold, matching TUI)
+hi def saseGpRunningWorkspace    guifg=#5FD7FF ctermfg=81
 
 " RUNNING pipe separators: dim
 hi def saseGpRunningPipe         guifg=#808080 ctermfg=244
