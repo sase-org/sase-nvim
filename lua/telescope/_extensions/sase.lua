@@ -85,8 +85,10 @@ local function xprompts_picker(opts)
         sorter = conf.generic_sorter(opts),
         previewer = make_previewer(),
         attach_mappings = function(prompt_bufnr, _map)
+          local selected = false
           actions.select_default:replace(function()
             local selection = action_state.get_selected_entry()
+            selected = true
             actions.close(prompt_bufnr)
             if selection then
               xprompt._insert_at_cursor(selection.value.name)
@@ -94,10 +96,10 @@ local function xprompts_picker(opts)
               opts.on_cancel()
             end
           end)
-          -- Handle close/cancel to restore ## if needed.
+          -- Handle close/cancel to restore # if needed.
           actions.close:enhance({
             post = function()
-              if opts.on_cancel then
+              if not selected and opts.on_cancel then
                 opts.on_cancel()
               end
             end,

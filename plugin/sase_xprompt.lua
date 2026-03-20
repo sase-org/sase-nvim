@@ -45,6 +45,11 @@ vim.api.nvim_create_autocmd("InsertCharPre", {
       local row = pos[1] - 1 -- 0-indexed row
       vim.api.nvim_buf_set_text(0, row, col - 1, row, col, { "" })
 
+      -- Save the position where the # was so on_cancel can restore it
+      -- (stopinsert shifts the cursor back, so we can't rely on cursor pos later).
+      local restore_row = row
+      local restore_col = col - 1
+
       -- Remember we were in insert mode, then leave it for the picker.
       local was_insert = vim.fn.mode() == "i"
       if was_insert then
@@ -53,16 +58,13 @@ vim.api.nvim_create_autocmd("InsertCharPre", {
 
       require("sase.xprompt").pick({
         on_cancel = function()
-          -- Restore a single # so the user can continue typing manually.
+          -- Restore a single # at its original position.
           vim.schedule(function()
-            local cur = vim.api.nvim_win_get_cursor(0)
-            local r = cur[1] - 1
-            local c = cur[2]
-            vim.api.nvim_buf_set_text(0, r, c, r, c, { "#" })
-            vim.api.nvim_win_set_cursor(0, { r + 1, c + 1 })
+            vim.api.nvim_buf_set_text(0, restore_row, restore_col, restore_row, restore_col, { "#" })
+            vim.api.nvim_win_set_cursor(0, { restore_row + 1, restore_col })
             if was_insert then
               vim.cmd("startinsert")
-              -- Move cursor forward past the inserted text.
+              -- Move cursor forward past the inserted #.
               local new_cur = vim.api.nvim_win_get_cursor(0)
               vim.api.nvim_win_set_cursor(0, { new_cur[1], new_cur[2] + 1 })
             end
