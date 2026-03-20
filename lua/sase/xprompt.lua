@@ -113,7 +113,7 @@ function M.pick(opts)
         return require("telescope").extensions.sase.xprompts
       end)
       if ok and ext then
-        ext({ items = items, on_cancel = opts.on_cancel })
+        ext({ items = items, on_cancel = opts.on_cancel, was_insert = opts.was_insert })
         return
       end
     end
