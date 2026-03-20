@@ -92,14 +92,28 @@ local function insert_at_cursor(name)
   end
 end
 
---- Return to insert mode after the picker closes.
+--- Return to insert mode after the picker closes, with the cursor
+--- positioned right after the text that was just inserted.
 --- @param origin_win integer|nil
 local function restore_insert_mode(origin_win)
   vim.schedule(function()
     if origin_win and vim.api.nvim_win_is_valid(origin_win) then
       vim.api.nvim_set_current_win(origin_win)
     end
-    vim.cmd("startinsert!")
+    -- nvim_put with follow=true leaves the cursor on the last character of
+    -- the inserted text.  We need to enter insert mode right *after* that
+    -- character (like 'a'), not at the end of the line (like 'A').
+    local pos = vim.api.nvim_win_get_cursor(0)
+    local line_len = #vim.api.nvim_get_current_line()
+    if pos[2] + 1 >= line_len then
+      -- Cursor is on (or past) the last character — startinsert! is correct.
+      vim.cmd("startinsert!")
+    else
+      -- Move one column right so startinsert enters before the *next* char,
+      -- i.e. right after the inserted text.
+      vim.api.nvim_win_set_cursor(0, { pos[1], pos[2] + 1 })
+      vim.cmd("startinsert")
+    end
   end)
 end
 
