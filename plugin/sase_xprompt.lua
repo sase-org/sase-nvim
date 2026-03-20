@@ -19,7 +19,7 @@ end, { desc = "Refresh sase xprompt cache" })
 
 -- Insert-mode ## trigger.
 -- When the user types # and the character before cursor is already #,
--- remove the first # and open the picker. On cancel, restore ##.
+-- remove the first # and open the picker. On cancel, restore a single #.
 vim.api.nvim_create_autocmd("InsertCharPre", {
   group = vim.api.nvim_create_augroup("SaseXPromptTrigger", { clear = true }),
   callback = function()
@@ -53,13 +53,13 @@ vim.api.nvim_create_autocmd("InsertCharPre", {
 
       require("sase.xprompt").pick({
         on_cancel = function()
-          -- Restore the ## the user typed.
+          -- Restore a single # so the user can continue typing manually.
           vim.schedule(function()
             local cur = vim.api.nvim_win_get_cursor(0)
             local r = cur[1] - 1
             local c = cur[2]
-            vim.api.nvim_buf_set_text(0, r, c, r, c, { "##" })
-            vim.api.nvim_win_set_cursor(0, { r + 1, c + 2 })
+            vim.api.nvim_buf_set_text(0, r, c, r, c, { "#" })
+            vim.api.nvim_win_set_cursor(0, { r + 1, c + 1 })
             if was_insert then
               vim.cmd("startinsert")
               -- Move cursor forward past the inserted text.
