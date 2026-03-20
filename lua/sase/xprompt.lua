@@ -92,11 +92,23 @@ local function insert_at_cursor(name)
   end
 end
 
+--- Return to insert mode after the picker closes.
+--- @param origin_win integer|nil
+local function restore_insert_mode(origin_win)
+  vim.schedule(function()
+    if origin_win and vim.api.nvim_win_is_valid(origin_win) then
+      vim.api.nvim_set_current_win(origin_win)
+    end
+    vim.cmd("startinsert!")
+  end)
+end
+
 --- Open the xprompt picker. Prefers Telescope if available, otherwise
 --- falls back to vim.ui.select.
 --- @param opts? { on_cancel?: fun() }
 function M.pick(opts)
   opts = opts or {}
+  opts.origin_win = opts.origin_win or vim.api.nvim_get_current_win()
   local function show(items)
     if #items == 0 then
       vim.notify("No xprompts found", vim.log.levels.WARN)
@@ -113,7 +125,7 @@ function M.pick(opts)
         return require("telescope").extensions.sase.xprompts
       end)
       if ok and ext then
-        ext({ items = items, on_cancel = opts.on_cancel, was_insert = opts.was_insert })
+        ext({ items = items, on_cancel = opts.on_cancel, was_insert = opts.was_insert, origin_win = opts.origin_win })
         return
       end
     end
@@ -127,7 +139,7 @@ function M.pick(opts)
     }, function(choice)
       if choice then
         insert_at_cursor(choice.name)
-        vim.cmd("startinsert!")
+        restore_insert_mode(opts.origin_win)
       elseif opts.on_cancel then
         opts.on_cancel()
       end
@@ -156,5 +168,6 @@ M._format_display = format_display
 M._format_entry = format_entry
 M._insert_at_cursor = insert_at_cursor
 M._fetch_xprompts = fetch_xprompts
+M._restore_insert_mode = restore_insert_mode
 
 return M

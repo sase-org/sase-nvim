@@ -92,7 +92,7 @@ local function xprompts_picker(opts)
             actions.close(prompt_bufnr)
             if selection then
               xprompt._insert_at_cursor(selection.value.name)
-              vim.cmd("startinsert!")
+              xprompt._restore_insert_mode(opts.origin_win)
             elseif opts.on_cancel then
               opts.on_cancel()
             end

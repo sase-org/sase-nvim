@@ -52,12 +52,14 @@ vim.api.nvim_create_autocmd("InsertCharPre", {
 
       -- Remember we were in insert mode, then leave it for the picker.
       local was_insert = vim.fn.mode() == "i"
+      local origin_win = vim.api.nvim_get_current_win()
       if was_insert then
         vim.cmd("stopinsert")
       end
 
       require("sase.xprompt").pick({
         was_insert = was_insert,
+        origin_win = origin_win,
         on_cancel = function()
           -- Restore a single # at its original position.
           vim.schedule(function()
