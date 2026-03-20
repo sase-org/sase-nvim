@@ -94,9 +94,14 @@ local function float_win(buf, layout, title, extra)
     cfg.title_pos = "center"
   end
   -- footer (Neovim >= 0.10)
-  if extra.footer and vim.fn.has("nvim-0.10") == 1 then
-    cfg.footer = extra.footer
-    cfg.footer_pos = "center"
+  if extra.footer then
+    local ok = pcall(function()
+      cfg.footer = extra.footer
+      cfg.footer_pos = "center"
+    end)
+    if not ok then
+      extra.footer = nil
+    end
   end
   local win = api.nvim_open_win(buf, false, cfg)
   vim.wo[win].wrap = true
