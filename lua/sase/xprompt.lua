@@ -92,8 +92,7 @@ local function insert_at_cursor(name)
   end
 end
 
---- Open the xprompt picker. Prefers Telescope if available, otherwise
---- falls back to vim.ui.select.
+--- Open the xprompt picker using the native floating-window UI.
 --- @param opts? { on_cancel?: fun() }
 function M.pick(opts)
   opts = opts or {}
@@ -106,31 +105,44 @@ function M.pick(opts)
       return
     end
 
-    -- Try Telescope first.
-    local has_telescope, _ = pcall(require, "telescope")
-    if has_telescope then
-      local ok, ext = pcall(function()
-        return require("telescope").extensions.sase.xprompts
-      end)
-      if ok and ext then
-        ext({ items = items, on_cancel = opts.on_cancel })
-        return
-      end
-    end
-
-    -- Fallback: vim.ui.select.
-    vim.ui.select(items, {
-      prompt = "Select XPrompt> ",
-      format_item = function(item)
-        return format_entry(item)
+    require("sase.picker").open(items, {
+      on_done = function(name)
+        if name then
+          insert_at_cursor(name)
+        elseif opts.on_cancel then
+          opts.on_cancel()
+        end
       end,
-    }, function(choice)
-      if choice then
-        insert_at_cursor(choice.name)
-      elseif opts.on_cancel then
+    })
+  end
+
+  if _cache then
+    show(_cache)
+  else
+    fetch_xprompts(show)
+  end
+end
+
+--- Open the xprompt picker using Telescope (requires telescope.nvim).
+--- @param opts? { on_cancel?: fun() }
+function M.pick_telescope(opts)
+  opts = opts or {}
+  local function show(items)
+    if #items == 0 then
+      vim.notify("No xprompts found", vim.log.levels.WARN)
+      if opts.on_cancel then
         opts.on_cancel()
       end
+      return
+    end
+    local ok, ext = pcall(function()
+      return require("telescope").extensions.sase.xprompts
     end)
+    if ok and ext then
+      ext({ items = items, on_cancel = opts.on_cancel })
+    else
+      vim.notify("Telescope sase extension not available", vim.log.levels.ERROR)
+    end
   end
 
   if _cache then
