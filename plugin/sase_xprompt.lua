@@ -1,4 +1,4 @@
--- XPrompt picker triggered by ## in insert mode.
+-- XPrompt picker triggered by #@ in insert mode.
 -- Also provides the :SaseXPrompts command for manual invocation.
 
 if vim.g.loaded_sase_xprompt then
@@ -17,13 +17,13 @@ vim.api.nvim_create_user_command("SaseXPromptsRefresh", function()
   vim.notify("xprompt cache refreshed", vim.log.levels.INFO)
 end, { desc = "Refresh sase xprompt cache" })
 
--- Insert-mode ## trigger.
--- When the user types # and the character before cursor is already #,
--- remove the first # and open the picker. On cancel, restore a single #.
+-- Insert-mode #@ trigger.
+-- When the user types @ and the character before cursor is #,
+-- remove the # and open the picker. On cancel, restore a single #.
 vim.api.nvim_create_autocmd("InsertCharPre", {
   group = vim.api.nvim_create_augroup("SaseXPromptTrigger", { clear = true }),
   callback = function()
-    if vim.v.char ~= "#" then
+    if vim.v.char ~= "@" then
       return
     end
     local col = vim.fn.col(".") - 1 -- 0-indexed column before cursor
@@ -36,7 +36,7 @@ vim.api.nvim_create_autocmd("InsertCharPre", {
       return
     end
 
-    -- Swallow the second # (don't insert it).
+    -- Swallow the @ (don't insert it).
     vim.v.char = ""
 
     vim.schedule(function()
@@ -75,7 +75,7 @@ vim.api.nvim_create_autocmd("InsertCharPre", {
   end,
 })
 
--- Pre-warm the cache on VimEnter so the first ## is instant.
+-- Pre-warm the cache on VimEnter so the first #@ is instant.
 vim.api.nvim_create_autocmd("VimEnter", {
   group = vim.api.nvim_create_augroup("SaseXPromptCache", { clear = true }),
   once = true,

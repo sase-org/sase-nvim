@@ -96,7 +96,7 @@ local function xprompts_picker(opts)
               opts.on_cancel()
             end
           end)
-          -- Handle close/cancel to restore # if needed.
+          -- Handle close/cancel to restore #@ trigger if needed.
           actions.close:enhance({
             post = function()
               if not selected and opts.on_cancel then
