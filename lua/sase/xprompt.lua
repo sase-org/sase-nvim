@@ -127,6 +127,9 @@ function M.pick(opts)
     }, function(choice)
       if choice then
         insert_at_cursor(choice.name)
+        if opts.was_insert then
+          vim.cmd("startinsert!")
+        end
       elseif opts.on_cancel then
         opts.on_cancel()
       end
