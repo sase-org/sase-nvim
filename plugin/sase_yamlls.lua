@@ -37,13 +37,11 @@ local function apply_schema(schema, globs)
   end)
 end
 
--- sase config files  (sase.yml, sase_*.yml, default_config.yml)
+-- sase config files  (sase.yml, sase_*.yml)
 resolve_schema("config-schema", function(schema)
   apply_schema(schema, {
     "**/sase.yml",
     "**/sase_*.yml",
-    "**/sase/default_config.yml",
-    "**/sase_*/default_config.yml",
   })
 end)
 

@@ -24,7 +24,7 @@ colors matching the `sase ace` TUI:
 
 Automatically configures `yamlls` with schema associations for sase YAML files:
 
-- **Config schema** — Applied to `sase.yml`, `sase_*.yml`, and `default_config.yml` files
+- **Config schema** — Applied to `sase.yml` and `sase_*.yml` files
 - **XPrompt workflow schema** — Applied to files under `xprompts/` and `.xprompts/` directories
 - **XPrompt collection schema** — Applied to `xprompts.yml` / `xprompts.yaml` files
 
