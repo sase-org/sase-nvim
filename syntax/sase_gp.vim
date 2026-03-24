@@ -63,6 +63,9 @@ syn match saseGpLinkValue /\%(^BUG: \)\@<=.\+/
 " --- Test targets (Bazel-style //path/to:target) ---
 syn match saseGpTestTarget /^\s\+\/\/\S\+/
 
+" --- Test target (FAILED) annotation ---
+syn match saseGpTestTargetFailed /\%(^\s\+\/\/\S\+\s\+\)\@<=(FAILED)/
+
 " --- Entry numbers: (1), (2), (10) ---
 syn match saseGpEntryNumber /^\s\+(\d\+)/
 
@@ -77,15 +80,19 @@ syn match saseGpProposedEntry /\%(|\s\+\)\@<=(\d\+[a-z])/
 syn match saseGpTimestamp /\[\d\{6}_\d\{6}\]/
 
 " --- Inline status words (in HOOKS / MENTORS status lines) ---
-syn match saseGpInlinePassed   /\<PASSED\>/
-syn match saseGpInlineFailed   /\<FAILED\>/
-syn match saseGpInlineRunning  /\<RUNNING\>/
-syn match saseGpInlineDead     /\<DEAD\>/
-syn match saseGpInlineKilled   /\<KILLED\>/
-syn match saseGpInlineStarting /\<STARTING\>/
+syn match saseGpInlinePassed    /\<PASSED\>/
+syn match saseGpInlineFailed    /\<FAILED\>/
+syn match saseGpInlineRunning   /\<RUNNING\>/
+syn match saseGpInlineDead      /\<DEAD\>/
+syn match saseGpInlineKilled    /\<KILLED\>/
+syn match saseGpInlineStarting  /\<STARTING\>/
+syn match saseGpInlineCommented /\<COMMENTED\>/
 
-" --- Duration: (1m23s) ---
+" --- Duration: (1m23s), (1h2m3s), (5m), (30s), etc. ---
+syn match saseGpDuration /(\d\+h\d\+m\d\+s)/
+syn match saseGpDuration /(\d\+h\d\+m)/
 syn match saseGpDuration /(\d\+m\d\+s)/
+syn match saseGpDuration /(\d\+[hms])/
 
 " --- Entry reference suffixes: (2a) or (3) after " - " ---
 syn match saseGpEntryRef /\%(- \)\@<=(\d\+[a-z]\?)/
@@ -100,6 +107,10 @@ syn match saseGpSuffixRunningAgent  /(@:[^)]*)/
 syn match saseGpSuffixRunningProcess /(\$:[^)]*)/
 syn match saseGpSuffixSummarize     /(%:[^)]*)/
 syn match saseGpSuffixMetahook      /(\^:[^)]*)/
+
+" --- Mentor profile:mentor in MENTORS status lines ---
+" Format: | [timestamp] profile:mentor - STATUS
+syn match saseGpMentorProfile /\%(|\s\+\)\@<=\%(\[\d\{6}_\d\{6}\]\s\+\)\?\zs\S\+:\S\+\ze\s\+-\s\+/
 
 " --- Reviewer types: [critique], [review] ---
 syn match saseGpReviewerType /\[\%(critique\|review\)\]/
@@ -151,6 +162,9 @@ hi def saseGpLinkValue           guifg=#569CD6 gui=bold,underline ctermfg=75 cte
 " Test targets: bold light green
 hi def saseGpTestTarget          guifg=#AFD75F gui=bold ctermfg=149 cterm=bold
 
+" Test target (FAILED) annotation: bold red
+hi def saseGpTestTargetFailed    guifg=#FF5F5F gui=bold ctermfg=203 cterm=bold
+
 " Entry numbers: bold gold
 hi def saseGpEntryNumber         guifg=#D7AF5F gui=bold ctermfg=179 cterm=bold
 
@@ -167,6 +181,7 @@ hi def saseGpInlineRunning       guifg=#FFD700 gui=bold ctermfg=220 cterm=bold
 hi def saseGpInlineDead          guifg=#B8A800 gui=bold ctermfg=142 cterm=bold
 hi def saseGpInlineKilled        guifg=#FF5F5F gui=bold ctermfg=203 cterm=bold
 hi def saseGpInlineStarting      guifg=#FFD700 gui=bold ctermfg=220 cterm=bold
+hi def saseGpInlineCommented     guifg=#5FD7D7 gui=bold ctermfg=80 cterm=bold
 
 " Duration: gray
 hi def saseGpDuration            guifg=#808080 ctermfg=244
@@ -184,6 +199,9 @@ hi def saseGpSuffixPendingDead   guifg=#FFD700 guibg=#444444 gui=bold ctermfg=22
 
 " Entry reference suffixes: bold pink
 hi def saseGpEntryRef            guifg=#FF87AF gui=bold ctermfg=211 cterm=bold
+
+" Mentor profile:mentor - bold light blue
+hi def saseGpMentorProfile       guifg=#87AFFF gui=bold ctermfg=111 cterm=bold
 
 " Reviewer types: bold gold
 hi def saseGpReviewerType        guifg=#D7AF5F gui=bold ctermfg=179 cterm=bold
