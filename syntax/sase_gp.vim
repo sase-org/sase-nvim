@@ -38,7 +38,7 @@ syn match saseGpRunningPipe /\s|\s/
 syn match saseGpRunningPinned /\<PINNED\>/
 
 " --- Sub-entry field labels (| CHAT: , | DIFF:) ---
-syn match saseGpSubFieldLabel /|\s\+\zs\%(CHAT\|DIFF\):/
+syn match saseGpSubFieldLabel /|\s\+\zs\%(CHAT\|DIFF\|PLAN\):/
 
 " --- NAME value ---
 syn match saseGpNameValue /\%(^NAME: \)\@<=.\+/
@@ -119,7 +119,7 @@ syn match saseGpReviewerType /\[\%(critique\|review\)\]/
 syn match saseGpFilePath /\~\/\.\S\+/
 
 " --- Sub-entry file paths (after CHAT: / DIFF:) ---
-syn match saseGpSubFieldPath /|\s\+\%(CHAT\|DIFF\):\s\+\zs\S\+/
+syn match saseGpSubFieldPath /|\s\+\%(CHAT\|DIFF\|PLAN\):\s\+\zs\S\+/
 
 " --- Pipe separator at start of sub-entries ---
 syn match saseGpPipe /^\s\+|\s/
