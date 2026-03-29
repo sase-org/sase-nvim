@@ -51,6 +51,7 @@ syn match saseGpStatusMailed    /\%(^STATUS: \)\@<=Mailed/
 syn match saseGpStatusSubmitted /\%(^STATUS: \)\@<=Submitted/
 syn match saseGpStatusReverted  /\%(^STATUS: \)\@<=Reverted/
 syn match saseGpStatusArchived  /\%(^STATUS: \)\@<=Archived/
+syn match saseGpStatusReserved  /\%(^STATUS: \)\@<=Reserved/
 
 " --- PARENT value ---
 syn match saseGpParentValue /\%(^PARENT: \)\@<=.\+/
@@ -152,6 +153,7 @@ hi def saseGpStatusMailed        guifg=#00D787 gui=bold ctermfg=42 cterm=bold
 hi def saseGpStatusSubmitted     guifg=#00AF00 gui=bold ctermfg=34 cterm=bold
 hi def saseGpStatusReverted      guifg=#808080 gui=bold ctermfg=244 cterm=bold
 hi def saseGpStatusArchived      guifg=#606060 gui=bold ctermfg=240 cterm=bold
+hi def saseGpStatusReserved      guifg=#AF87AF gui=bold ctermfg=139 cterm=bold
 
 " Parent value: bold cyan-green
 hi def saseGpParentValue         guifg=#00D7AF gui=bold ctermfg=43 cterm=bold
