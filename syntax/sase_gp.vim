@@ -186,8 +186,8 @@ hi def saseGpProposedEntry       guifg=#D7AF5F gui=bold ctermfg=179 cterm=bold
 " Timestamps: purple (HOOKS/MENTORS old format)
 hi def saseGpTimestamp           guifg=#AF87D7 ctermfg=140
 
-" TIMESTAMPS ISO datetime: bold light blue-gray (visible but not distracting)
-hi def saseGpTsDatetime          guifg=#87AFD7 gui=bold ctermfg=110 cterm=bold
+" TIMESTAMPS ISO datetime: purple (matching HOOKS/MENTORS timestamps)
+hi def saseGpTsDatetime          guifg=#AF87D7 ctermfg=140
 
 " TIMESTAMPS event types (matching TUI colors)
 hi def saseGpTsCommit            guifg=#00D7AF gui=bold ctermfg=43 cterm=bold
