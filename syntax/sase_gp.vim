@@ -27,6 +27,7 @@ syn match saseGpFieldLabel /^HOOKS:/
 syn match saseGpFieldLabel /^COMMENTS:/
 syn match saseGpFieldLabel /^MENTORS:/
 syn match saseGpFieldLabel /^RUNNING:/
+syn match saseGpFieldLabel /^TIMESTAMPS:/
 syn match saseGpFieldLabel /^WORKSPACE_DIR:/
 
 " --- WORKSPACE_DIR value ---
@@ -77,8 +78,17 @@ syn match saseGpProposedEntry /^\s\+(\d\+[a-z])/
 syn match saseGpEntryNumber /\%(|\s\+\)\@<=(\d\+)/
 syn match saseGpProposedEntry /\%(|\s\+\)\@<=(\d\+[a-z])/
 
-" --- Timestamps: [YYmmdd_HHMMSS] ---
+" --- Timestamps: [YYmmdd_HHMMSS] (HOOKS/MENTORS) ---
 syn match saseGpTimestamp /\[\d\{6}_\d\{6}\]/
+
+" --- TIMESTAMPS ISO datetime: [YYYY-MM-DD HH:MM:SS] ---
+syn match saseGpTsDatetime /\[\d\{4}-\d\{2}-\d\{2} \d\{2}:\d\{2}:\d\{2}\]/
+
+" --- TIMESTAMPS event type keywords (after closing bracket) ---
+syn match saseGpTsCommit /\]\s\+\zsCOMMIT\>/
+syn match saseGpTsStatus /\]\s\+\zsSTATUS\>/
+syn match saseGpTsSync   /\]\s\+\zsSYNC\>/
+syn match saseGpTsReword /\]\s\+\zsREWORD\>/
 
 " --- Inline status words (in HOOKS / MENTORS status lines) ---
 syn match saseGpInlinePassed    /\<PASSED\>/
@@ -173,8 +183,17 @@ hi def saseGpEntryNumber         guifg=#D7AF5F gui=bold ctermfg=179 cterm=bold
 " Proposed entries: bold gold (same as regular entries, matching TUI)
 hi def saseGpProposedEntry       guifg=#D7AF5F gui=bold ctermfg=179 cterm=bold
 
-" Timestamps: purple
+" Timestamps: purple (HOOKS/MENTORS old format)
 hi def saseGpTimestamp           guifg=#AF87D7 ctermfg=140
+
+" TIMESTAMPS ISO datetime: bold light blue-gray (visible but not distracting)
+hi def saseGpTsDatetime          guifg=#87AFD7 gui=bold ctermfg=110 cterm=bold
+
+" TIMESTAMPS event types (matching TUI colors)
+hi def saseGpTsCommit            guifg=#00D7AF gui=bold ctermfg=43 cterm=bold
+hi def saseGpTsStatus            guifg=#FFD787 gui=bold ctermfg=222 cterm=bold
+hi def saseGpTsSync              guifg=#5FD7FF gui=bold ctermfg=81 cterm=bold
+hi def saseGpTsReword            guifg=#D7AFFF gui=bold ctermfg=183 cterm=bold
 
 " Inline status words
 hi def saseGpInlinePassed        guifg=#00AF00 gui=bold ctermfg=34 cterm=bold
