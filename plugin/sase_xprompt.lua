@@ -60,6 +60,7 @@ vim.api.nvim_create_autocmd("InsertCharPre", {
       require("sase.xprompt").pick({
         was_insert = was_insert,
         origin_win = origin_win,
+        insert_pos = { row = row, col = col - 1 },
         on_cancel = function()
           -- Restore a single # at its original position.
           vim.schedule(function()

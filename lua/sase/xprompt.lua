@@ -79,16 +79,25 @@ local function format_entry(item)
 end
 
 --- Insert `#name` at the current cursor position (works in insert and normal mode).
+--- When insert_pos is provided, uses position-exact insertion via nvim_buf_set_text
+--- to avoid cursor drift from mode transitions and Telescope open/close.
 --- @param name string
-local function insert_at_cursor(name)
+--- @param insert_pos? { row: integer, col: integer }  0-indexed (row, col)
+local function insert_at_cursor(name, insert_pos)
   local text = "#" .. name
-  local mode = vim.fn.mode()
-  if mode == "i" or mode == "ic" then
-    -- Insert mode: put text before cursor.
-    vim.api.nvim_put({ text }, "c", false, true)
+  if insert_pos then
+    local r, c = insert_pos.row, insert_pos.col
+    vim.api.nvim_buf_set_text(0, r, c, r, c, { text })
+    vim.api.nvim_win_set_cursor(0, { r + 1, c + #text - 1 })
   else
-    -- Normal mode: put text after cursor.
-    vim.api.nvim_put({ text }, "c", true, true)
+    local mode = vim.fn.mode()
+    if mode == "i" or mode == "ic" then
+      -- Insert mode: put text before cursor.
+      vim.api.nvim_put({ text }, "c", false, true)
+    else
+      -- Normal mode: put text after cursor.
+      vim.api.nvim_put({ text }, "c", true, true)
+    end
   end
 end
 
@@ -139,7 +148,7 @@ function M.pick(opts)
         return require("telescope").extensions.sase.xprompts
       end)
       if ok and ext then
-        ext({ items = items, on_cancel = opts.on_cancel, was_insert = opts.was_insert, origin_win = opts.origin_win })
+        ext({ items = items, on_cancel = opts.on_cancel, was_insert = opts.was_insert, origin_win = opts.origin_win, insert_pos = opts.insert_pos })
         return
       end
     end
@@ -152,7 +161,7 @@ function M.pick(opts)
       end,
     }, function(choice)
       if choice then
-        insert_at_cursor(choice.name)
+        insert_at_cursor(choice.name, opts.insert_pos)
         restore_insert_mode(opts.origin_win)
       elseif opts.on_cancel then
         opts.on_cancel()
