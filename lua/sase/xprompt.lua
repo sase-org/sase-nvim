@@ -89,6 +89,7 @@ local function insert_at_cursor(name, insert_pos)
     local r, c = insert_pos.row, insert_pos.col
     vim.api.nvim_buf_set_text(0, r, c, r, c, { text })
     vim.api.nvim_win_set_cursor(0, { r + 1, c + #text - 1 })
+    return { row = r, col = c + #text }
   else
     local mode = vim.fn.mode()
     if mode == "i" or mode == "ic" then
@@ -104,24 +105,31 @@ end
 --- Return to insert mode after the picker closes, with the cursor
 --- positioned right after the text that was just inserted.
 --- @param origin_win integer|nil
-local function restore_insert_mode(origin_win)
+--- @param end_pos? { row: integer, col: integer }  0-indexed post-insertion cursor target
+local function restore_insert_mode(origin_win, end_pos)
   vim.schedule(function()
     if origin_win and vim.api.nvim_win_is_valid(origin_win) then
       vim.api.nvim_set_current_win(origin_win)
     end
-    -- nvim_put with follow=true leaves the cursor on the last character of
-    -- the inserted text.  We need to enter insert mode right *after* that
-    -- character (like 'a'), not at the end of the line (like 'A').
-    local pos = vim.api.nvim_win_get_cursor(0)
     local line_len = #vim.api.nvim_get_current_line()
-    if pos[2] + 1 >= line_len then
-      -- Cursor is on (or past) the last character — startinsert! is correct.
-      vim.cmd("startinsert!")
+    if end_pos then
+      -- Use the known-good position from insert_at_cursor, immune to
+      -- Telescope's deferred cursor restoration.
+      if end_pos.col >= line_len then
+        vim.cmd("startinsert!")
+      else
+        vim.api.nvim_win_set_cursor(0, { end_pos.row + 1, end_pos.col })
+        vim.cmd("startinsert")
+      end
     else
-      -- Move one column right so startinsert enters before the *next* char,
-      -- i.e. right after the inserted text.
-      vim.api.nvim_win_set_cursor(0, { pos[1], pos[2] + 1 })
-      vim.cmd("startinsert")
+      -- Fallback for vim.ui.select / non-insert_pos path: read current cursor.
+      local pos = vim.api.nvim_win_get_cursor(0)
+      if pos[2] + 1 >= line_len then
+        vim.cmd("startinsert!")
+      else
+        vim.api.nvim_win_set_cursor(0, { pos[1], pos[2] + 1 })
+        vim.cmd("startinsert")
+      end
     end
   end)
 end
@@ -161,8 +169,8 @@ function M.pick(opts)
       end,
     }, function(choice)
       if choice then
-        insert_at_cursor(choice.name, opts.insert_pos)
-        restore_insert_mode(opts.origin_win)
+        local end_pos = insert_at_cursor(choice.name, opts.insert_pos)
+        restore_insert_mode(opts.origin_win, end_pos)
       elseif opts.on_cancel then
         opts.on_cancel()
       end

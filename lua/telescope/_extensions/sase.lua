@@ -91,8 +91,8 @@ local function xprompts_picker(opts)
             selected = true
             actions.close(prompt_bufnr)
             if selection then
-              xprompt._insert_at_cursor(selection.value.name, opts.insert_pos)
-              xprompt._restore_insert_mode(opts.origin_win)
+              local end_pos = xprompt._insert_at_cursor(selection.value.name, opts.insert_pos)
+              xprompt._restore_insert_mode(opts.origin_win, end_pos)
             elseif opts.on_cancel then
               opts.on_cancel()
             end
