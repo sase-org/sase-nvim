@@ -15,6 +15,7 @@ local entry_display = require("telescope.pickers.entry_display")
 
 local xprompt = require("sase.xprompt")
 local file_history = require("sase.complete.file_history")
+local file_complete = require("sase.complete.file")
 local complete_picker = require("sase.complete._picker")
 
 --- Create a Telescope previewer that shows xprompt content.
@@ -229,9 +230,101 @@ local function file_history_picker(opts)
   end
 end
 
+--- File-system completion picker.
+--- @param opts? { candidates?: SaseFileCandidate[], token: { text: string, row: integer, col_start: integer, col_end: integer }, cwd: string, on_cancel?: fun(), was_insert?: boolean, origin_win?: integer }
+local function file_picker(opts)
+  opts = opts or {}
+  local token = opts.token
+  if not token then
+    return
+  end
+
+  local function show(candidates)
+    if #candidates == 0 then
+      vim.notify("No file completions for '" .. token.text .. "'", vim.log.levels.WARN)
+      if opts.on_cancel then
+        opts.on_cancel()
+      end
+      return
+    end
+
+    local title = (token.text ~= "" and token.text) or opts.cwd
+
+    pickers
+      .new(opts, {
+        prompt_title = "files",
+        results_title = title,
+        finder = finders.new_table({
+          results = candidates,
+          entry_maker = function(c)
+            local icon = c.is_dir and "📁" or "📄"
+            return {
+              value = c,
+              display = icon .. "  " .. c.display,
+              ordinal = c.name,
+            }
+          end,
+        }),
+        sorter = conf.generic_sorter(opts),
+        attach_mappings = function(prompt_bufnr, _map)
+          local selected = false
+          actions.select_default:replace(function()
+            local selection = action_state.get_selected_entry()
+            selected = true
+            actions.close(prompt_bufnr)
+            if not selection then
+              if opts.on_cancel then
+                opts.on_cancel()
+              end
+              return
+            end
+            local choice = selection.value
+            local end_pos = complete_picker.replace_range(
+              token.row, token.col_start, token.col_end, choice.insertion
+            )
+            if choice.is_dir then
+              -- Drill down: re-open the picker rooted at the new directory.
+              local new_token = {
+                text = choice.insertion,
+                row = token.row,
+                col_start = token.col_start,
+                col_end = token.col_start + #choice.insertion,
+              }
+              file_complete.pick({
+                origin_win = opts.origin_win,
+                was_insert = opts.was_insert,
+                token = new_token,
+                cwd = opts.cwd,
+                on_cancel = opts.on_cancel,
+              })
+            else
+              complete_picker.restore_insert_mode(opts.origin_win, end_pos)
+            end
+          end)
+          actions.close:enhance({
+            post = function()
+              if not selected and opts.on_cancel then
+                opts.on_cancel()
+              end
+            end,
+          })
+          return true
+        end,
+      })
+      :find()
+  end
+
+  if opts.candidates then
+    show(opts.candidates)
+  else
+    file_complete._fetch_candidates(token.text, opts.cwd, show)
+  end
+end
+
 return telescope.register_extension({
   exports = {
     xprompts = xprompts_picker,
     file_history = file_history_picker,
+    file = file_picker,
   },
 })

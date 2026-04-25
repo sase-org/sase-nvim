@@ -2,8 +2,6 @@
 --
 -- Reads the token under the cursor, classifies it (xprompt / file /
 -- file_history / nil), and hands off to the right per-mode picker.
--- Phase 2: only the xprompt branch is wired; file and file_history
--- branches notify "not yet implemented" and fall through to a no-op.
 
 local M = {}
 
@@ -27,7 +25,13 @@ function M.trigger()
   end
 
   if kind == "file" then
-    vim.notify("sase: file completion not yet implemented", vim.log.levels.WARN)
+    local origin_win = vim.api.nvim_get_current_win()
+    local was_insert = vim.fn.mode() == "i" or vim.fn.mode() == "ic"
+    require("sase.complete.file").pick({
+      origin_win = origin_win,
+      was_insert = was_insert,
+      token = info,
+    })
     return
   end
 

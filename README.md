@@ -27,7 +27,7 @@ Insert-mode `<C-t>` opens a context-sensitive picker that mirrors the `sase ace`
 | Cursor on…                                   | Opens…                                 |
 | -------------------------------------------- | -------------------------------------- |
 | `#token` (xprompt reference)                 | xprompt picker                         |
-| path-like token (`~/foo`, `./bar`, `a/b.c`…) | file-system picker *(coming in Phase 5)* |
+| path-like token (`~/foo`, `./bar`, `a/b.c`…) | file-system picker                     |
 | empty / no token                             | recent files picker                    |
 
 The keymap is **opt-in** — add this to your config to enable it:
@@ -38,12 +38,17 @@ require("sase").setup({
 })
 ```
 
-The xprompt and recent-files branches are wired today; the file-system branch notifies "not yet implemented".
+All three branches are wired.
 
 In the recent-files picker, `<C-l>` (or `<Enter>`) inserts the highlighted path and `<C-d>`
 removes the highlighted entry from `~/.sase/file_reference_history.json` and refreshes the
 picker in place. Run `:SaseFileHistoryRefresh` to drop the cached list so the next `<C-t>`
 re-fetches from `sase file-history list`.
+
+In the file-system picker, candidates come from `sase file list --path <cwd> --token <token>`,
+so the rules for resolving `~/`, absolute paths, `./`, `../`, and `.sase/` match the TUI.
+Selecting a file inserts the full path; selecting a directory drills down — the picker
+re-opens rooted at the chosen directory.
 
 ### YAML Language Server Schemas
 
