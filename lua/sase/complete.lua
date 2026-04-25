@@ -32,7 +32,12 @@ function M.trigger()
   end
 
   if kind == "file_history" then
-    vim.notify("sase: file-history completion not yet implemented", vim.log.levels.WARN)
+    local origin_win = vim.api.nvim_get_current_win()
+    local was_insert = vim.fn.mode() == "i" or vim.fn.mode() == "ic"
+    require("sase.complete.file_history").pick({
+      origin_win = origin_win,
+      was_insert = was_insert,
+    })
     return
   end
 

@@ -14,6 +14,8 @@ local previewers = require("telescope.previewers")
 local entry_display = require("telescope.pickers.entry_display")
 
 local xprompt = require("sase.xprompt")
+local file_history = require("sase.complete.file_history")
+local complete_picker = require("sase.complete._picker")
 
 --- Create a Telescope previewer that shows xprompt content.
 local function make_previewer()
@@ -118,8 +120,118 @@ local function xprompts_picker(opts)
   end
 end
 
+--- File-history ("recent files") picker.
+--- @param opts? { paths?: string[], on_cancel?: fun(), was_insert?: boolean, origin_win?: integer }
+local function file_history_picker(opts)
+  opts = opts or {}
+
+  local function show(paths)
+    if #paths == 0 then
+      vim.notify("No recent files in sase history", vim.log.levels.WARN)
+      if opts.on_cancel then
+        opts.on_cancel()
+      end
+      return
+    end
+
+    pickers
+      .new(opts, {
+        prompt_title = "recent files",
+        results_title = "[^L] accept  [^D] delete",
+        finder = finders.new_table({
+          results = paths,
+          entry_maker = function(path)
+            return {
+              value = path,
+              display = path,
+              ordinal = path,
+            }
+          end,
+        }),
+        sorter = conf.generic_sorter(opts),
+        attach_mappings = function(prompt_bufnr, map)
+          local selected = false
+          actions.select_default:replace(function()
+            local selection = action_state.get_selected_entry()
+            selected = true
+            actions.close(prompt_bufnr)
+            if selection then
+              local end_pos = complete_picker.insert_text_at_cursor(selection.value, nil)
+              -- Cache is stale after an insert (recency changes).
+              file_history.clear_cache()
+              complete_picker.restore_insert_mode(opts.origin_win, end_pos)
+            elseif opts.on_cancel then
+              opts.on_cancel()
+            end
+          end)
+
+          local function delete_selected()
+            local selection = action_state.get_selected_entry()
+            if not selection then
+              return
+            end
+            local victim = selection.value
+            file_history._delete_path(victim, function(ok)
+              if not ok then
+                vim.notify("sase: failed to delete '" .. victim .. "'", vim.log.levels.ERROR)
+                return
+              end
+              -- Remove from the in-memory list and refresh the picker in place.
+              for i, p in ipairs(paths) do
+                if p == victim then
+                  table.remove(paths, i)
+                  break
+                end
+              end
+              file_history.clear_cache()
+              local current_picker = action_state.get_current_picker(prompt_bufnr)
+              if #paths == 0 then
+                actions.close(prompt_bufnr)
+                vim.notify("No recent files in sase history", vim.log.levels.WARN)
+                return
+              end
+              current_picker:refresh(
+                finders.new_table({
+                  results = paths,
+                  entry_maker = function(path)
+                    return {
+                      value = path,
+                      display = path,
+                      ordinal = path,
+                    }
+                  end,
+                }),
+                { reset_prompt = false }
+              )
+            end)
+          end
+
+          map("i", "<C-d>", delete_selected)
+          map("n", "<C-d>", delete_selected)
+
+          actions.close:enhance({
+            post = function()
+              if not selected and opts.on_cancel then
+                opts.on_cancel()
+              end
+            end,
+          })
+          return true
+        end,
+      })
+      :find()
+  end
+
+  if opts.paths then
+    show(opts.paths)
+  else
+    file_history._fetch_paths(show)
+  end
+end
+
 return telescope.register_extension({
   exports = {
     xprompts = xprompts_picker,
+    file_history = file_history_picker,
   },
 })

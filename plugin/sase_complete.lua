@@ -9,3 +9,10 @@ if vim.g.loaded_sase_complete then
   return
 end
 vim.g.loaded_sase_complete = true
+
+-- :SaseFileHistoryRefresh — drop the cached recent-files list so the
+-- next <C-t> pick refetches from `sase file-history list`.
+vim.api.nvim_create_user_command("SaseFileHistoryRefresh", function()
+  require("sase.complete.file_history").refresh()
+  vim.notify("file-history cache refreshed", vim.log.levels.INFO)
+end, { desc = "Refresh sase file-history cache" })
