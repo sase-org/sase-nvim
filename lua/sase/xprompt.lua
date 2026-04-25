@@ -79,12 +79,22 @@ local function format_entry(item)
 end
 
 --- Insert `#name` at the current cursor position (works in insert and normal mode).
---- When insert_pos is provided, uses position-exact insertion via nvim_buf_set_text
+--- When `replace_range` is provided, the existing `[col_start, col_end)` byte range
+--- on `row` is replaced with `#name` (used by <C-t> on a `#token` to swap the whole
+--- token, mirroring the TUI's `_replace_token_text`).
+--- When `insert_pos` is provided, uses position-exact insertion via nvim_buf_set_text
 --- to avoid cursor drift from mode transitions and Telescope open/close.
 --- @param name string
 --- @param insert_pos? { row: integer, col: integer }  0-indexed (row, col)
-local function insert_at_cursor(name, insert_pos)
+--- @param replace_range? { row: integer, col_start: integer, col_end: integer }
+local function insert_at_cursor(name, insert_pos, replace_range)
   local text = "#" .. name
+  if replace_range then
+    local r, s, e = replace_range.row, replace_range.col_start, replace_range.col_end
+    vim.api.nvim_buf_set_text(0, r, s, r, e, { text })
+    vim.api.nvim_win_set_cursor(0, { r + 1, s + #text - 1 })
+    return { row = r, col = s + #text }
+  end
   if insert_pos then
     local r, c = insert_pos.row, insert_pos.col
     vim.api.nvim_buf_set_text(0, r, c, r, c, { text })
@@ -156,7 +166,14 @@ function M.pick(opts)
         return require("telescope").extensions.sase.xprompts
       end)
       if ok and ext then
-        ext({ items = items, on_cancel = opts.on_cancel, was_insert = opts.was_insert, origin_win = opts.origin_win, insert_pos = opts.insert_pos })
+        ext({
+          items = items,
+          on_cancel = opts.on_cancel,
+          was_insert = opts.was_insert,
+          origin_win = opts.origin_win,
+          insert_pos = opts.insert_pos,
+          replace_range = opts.replace_range,
+        })
         return
       end
     end
@@ -169,7 +186,7 @@ function M.pick(opts)
       end,
     }, function(choice)
       if choice then
-        local end_pos = insert_at_cursor(choice.name, opts.insert_pos)
+        local end_pos = insert_at_cursor(choice.name, opts.insert_pos, opts.replace_range)
         restore_insert_mode(opts.origin_win, end_pos)
       elseif opts.on_cancel then
         opts.on_cancel()

@@ -30,7 +30,7 @@ local function make_previewer()
 end
 
 --- Main picker function.
---- @param opts? { items?: table, on_cancel?: fun() }
+--- @param opts? { items?: table, on_cancel?: fun(), was_insert?: boolean, origin_win?: integer, insert_pos?: { row: integer, col: integer }, replace_range?: { row: integer, col_start: integer, col_end: integer } }
 local function xprompts_picker(opts)
   opts = opts or {}
 
@@ -91,7 +91,7 @@ local function xprompts_picker(opts)
             selected = true
             actions.close(prompt_bufnr)
             if selection then
-              local end_pos = xprompt._insert_at_cursor(selection.value.name, opts.insert_pos)
+              local end_pos = xprompt._insert_at_cursor(selection.value.name, opts.insert_pos, opts.replace_range)
               xprompt._restore_insert_mode(opts.origin_win, end_pos)
             elseif opts.on_cancel then
               opts.on_cancel()
