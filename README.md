@@ -20,6 +20,26 @@ colors matching the `sase ace` TUI:
 - Timestamps, durations, URLs, file paths, and test targets
 - Hook command prefixes, reviewer types, and draft markers
 
+### `<C-t>` Completion Dispatcher (opt-in)
+
+Insert-mode `<C-t>` opens a context-sensitive picker that mirrors the `sase ace` TUI:
+
+| Cursor on…                                   | Opens…                                 |
+| -------------------------------------------- | -------------------------------------- |
+| `#token` (xprompt reference)                 | xprompt picker                         |
+| path-like token (`~/foo`, `./bar`, `a/b.c`…) | file-system picker *(coming in Phase 5)* |
+| empty / no token                             | recent files picker *(coming in Phase 4)* |
+
+The keymap is **opt-in** — add this to your config to enable it:
+
+```lua
+require("sase").setup({
+  complete = { keymap = true },  -- or keymap = "<C-t>"
+})
+```
+
+Only the xprompt branch is wired today; the other modes notify "not yet implemented".
+
 ### YAML Language Server Schemas
 
 Automatically configures `yamlls` with schema associations for sase YAML files:
