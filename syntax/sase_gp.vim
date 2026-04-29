@@ -28,6 +28,7 @@ syn match saseGpFieldLabel /^COMMENTS:/
 syn match saseGpFieldLabel /^MENTORS:/
 syn match saseGpFieldLabel /^RUNNING:/
 syn match saseGpFieldLabel /^TIMESTAMPS:/
+syn match saseGpFieldLabel /^DELTAS:/
 syn match saseGpFieldLabel /^WORKSPACE_DIR:/
 
 " --- WORKSPACE_DIR value ---
@@ -128,6 +129,14 @@ syn match saseGpReviewerType /\[\%(critique\|review\)\]/
 
 " --- File paths (~/.sase/...) ---
 syn match saseGpFilePath /\~\/\.\S\+/
+
+" --- DELTAS entries: indent + glyph + path ---
+" Glyph styling first (matches "  + ", "  ~ ", "  - " at start of line).
+syn match saseGpDeltaAdded    /^\s\+\zs+\ze\s/
+syn match saseGpDeltaModified /^\s\+\zs\~\ze\s/
+syn match saseGpDeltaDeleted  /^\s\+\zs-\ze\s/
+" The delta path: everything after the glyph on the same line.
+syn match saseGpDeltaPath /\%(^\s\+[+~\-]\s\)\@<=.\+/
 
 " --- Sub-entry file paths (after CHAT: / DIFF:) ---
 syn match saseGpSubFieldPath /|\s\+\%(CHAT\|DIFF\|PLAN\):\s\+\zs\S\+/
@@ -242,6 +251,12 @@ hi def saseGpURL                 guifg=#569CD6 gui=underline ctermfg=75 cterm=un
 
 " Draft marker: bold gold
 hi def saseGpDraftMarker         guifg=#FFD700 gui=bold ctermfg=220 cterm=bold
+
+" DELTAS glyphs and paths
+hi def saseGpDeltaAdded          guifg=#5FD787 gui=bold ctermfg=114 cterm=bold
+hi def saseGpDeltaModified       guifg=#FFD787 gui=bold ctermfg=222 cterm=bold
+hi def saseGpDeltaDeleted        guifg=#FF5F5F gui=bold ctermfg=203 cterm=bold
+hi def saseGpDeltaPath           guifg=#87AFFF ctermfg=111
 
 " RUNNING entries: workspace number in cyan (no bold, matching TUI)
 hi def saseGpRunningWorkspace    guifg=#5FD7FF ctermfg=81
