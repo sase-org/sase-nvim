@@ -25,6 +25,14 @@ local function is_delim(ch)
   return _DELIMS[ch] == true
 end
 
+local function is_token_delim_at(line, pos)
+  local ch = line:sub(pos, pos)
+  if ch == "!" and pos > 1 and line:sub(pos - 1, pos - 1) == "#" then
+    return false
+  end
+  return is_delim(ch)
+end
+
 --- @class SaseTokenInfo
 --- @field text       string   Token text (no leading/trailing delimiter).
 --- @field row        integer  0-indexed buffer row of the token.
@@ -45,12 +53,28 @@ function M.token_under_cursor()
   -- Scan left: line is 0-indexed in the Python reference, so the char at
   -- "index s-1" in Python is line:sub(s, s) here (1-indexed).
   local s = col
-  while s > 0 and not is_delim(line:sub(s, s)) do
+  while s > 0 and not is_token_delim_at(line, s) do
     s = s - 1
   end
   local e = col
-  while e < #line and not is_delim(line:sub(e + 1, e + 1)) do
+  while e < #line and not is_token_delim_at(line, e + 1) do
     e = e + 1
+  end
+
+  if s >= 2 and line:sub(s - 1, s) == "#!" and is_delim(line:sub(s - 2, s - 2)) then
+    s = s - 2
+  end
+
+  if s == e and col >= 2 and line:sub(col - 1, col) == "#!" then
+    local marker_start = col - 2
+    if marker_start == 0 or is_delim(line:sub(marker_start, marker_start)) then
+      return {
+        text = "#!",
+        row = row,
+        col_start = marker_start,
+        col_end = col,
+      }
+    end
   end
 
   if s == e then
@@ -64,7 +88,7 @@ function M.token_under_cursor()
   }
 end
 
---- True when *token* looks like an xprompt reference (`#foo`, `#`, `#foo.bar`).
+--- True when *token* looks like an xprompt reference (`#foo`, `#!foo`, `#foo.bar`).
 --- Mirrors xprompt_completion.is_xprompt_like_token.
 --- @param token string|nil
 --- @return boolean

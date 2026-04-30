@@ -12,6 +12,9 @@ local M = {}
 --- @class SaseXPromptItem
 --- @field name string
 --- @field type "xprompt"|"workflow"
+--- @field kind? "xprompt"|"embeddable_workflow"|"standalone_workflow"
+--- @field prefix? string
+--- @field insertion? string
 --- @field source string|nil
 --- @field inputs SaseXPromptInput[]
 --- @field preview string
@@ -19,6 +22,63 @@ local M = {}
 --- Cached items from last fetch.
 --- @type SaseXPromptItem[]|nil
 local _cache = nil
+
+--- Return the reference text to insert/display for an xprompt item.
+--- Falls back to legacy fields for older `sase xprompt list` output.
+--- @param item SaseXPromptItem
+--- @return string
+local function item_insertion(item)
+  if type(item.insertion) == "string" and item.insertion ~= "" then
+    return item.insertion
+  end
+  local prefix = item.prefix
+  if not prefix or prefix == "" then
+    prefix = item.kind == "standalone_workflow" and "#!" or "#"
+  end
+  return prefix .. item.name
+end
+
+--- @param item SaseXPromptItem
+--- @return boolean
+local function is_standalone(item)
+  return item.kind == "standalone_workflow"
+    or item.prefix == "#!"
+    or (type(item.insertion) == "string" and item.insertion:sub(1, 2) == "#!")
+end
+
+--- @param item SaseXPromptItem
+--- @return string
+local function item_kind_label(item)
+  if item.kind == "standalone_workflow" then
+    return "Standalone"
+  end
+  if item.kind == "embeddable_workflow" or item.type == "workflow" then
+    return "Workflow"
+  end
+  return "XPrompt"
+end
+
+--- @param items SaseXPromptItem[]
+--- @param token? { text: string }
+--- @return SaseXPromptItem[]
+local function filter_items_for_token(items, token)
+  if not token or not token.text or token.text == "" then
+    return items
+  end
+
+  local standalone_only = token.text:sub(1, 2) == "#!"
+  local partial = standalone_only and token.text:sub(3) or token.text:sub(2)
+  local partial_lower = partial:lower()
+  local filtered = {}
+
+  for _, item in ipairs(items) do
+    if (not standalone_only or is_standalone(item)) and item.name:lower():sub(1, #partial_lower) == partial_lower then
+      filtered[#filtered + 1] = item
+    end
+  end
+
+  return filtered
+end
 
 --- Fetch all xprompts asynchronously via `sase xprompt list`.
 --- @param callback fun(items: SaseXPromptItem[])
@@ -49,7 +109,7 @@ end
 --- @return string
 local function format_display(item)
   local icon = item.type == "workflow" and "⚙ " or "  "
-  local parts = { icon .. "#" .. item.name }
+  local parts = { icon .. item_insertion(item) }
   -- Append user-facing input signatures.
   for _, inp in ipairs(item.inputs or {}) do
     if inp.required then
@@ -66,7 +126,7 @@ end
 --- @param item SaseXPromptItem
 --- @return string
 local function format_entry(item)
-  local icon = item.type == "workflow" and "⚙ #" or "  #"
+  local icon = item.type == "workflow" and "⚙ " or "  "
   local suffix = ""
   local user_inputs = {}
   for _, inp in ipairs(item.inputs or {}) do
@@ -75,20 +135,33 @@ local function format_entry(item)
   if #user_inputs > 0 then
     suffix = "(" .. table.concat(user_inputs, ", ") .. ")"
   end
-  return icon .. item.name .. suffix
+  return icon .. item_insertion(item) .. suffix
 end
 
---- Insert `#name` at the current cursor position (works in insert and normal mode).
+--- Normalize legacy bare names and new catalog insertion values.
+--- @param value string|SaseXPromptItem
+--- @return string
+local function normalize_insertion(value)
+  if type(value) == "table" then
+    return item_insertion(value)
+  end
+  if value:sub(1, 1) == "#" then
+    return value
+  end
+  return "#" .. value
+end
+
+--- Insert an xprompt reference at the current cursor position (works in insert and normal mode).
 --- When `replace_range` is provided, the existing `[col_start, col_end)` byte range
---- on `row` is replaced with `#name` (used by <C-t> on a `#token` to swap the whole
+--- on `row` is replaced with the selected reference (used by <C-t> on a `#token` to swap the whole
 --- token, mirroring the TUI's `_replace_token_text`).
 --- When `insert_pos` is provided, uses position-exact insertion via nvim_buf_set_text
 --- to avoid cursor drift from mode transitions and Telescope open/close.
---- @param name string
+--- @param value string|SaseXPromptItem
 --- @param insert_pos? { row: integer, col: integer }  0-indexed (row, col)
 --- @param replace_range? { row: integer, col_start: integer, col_end: integer }
-local function insert_at_cursor(name, insert_pos, replace_range)
-  local text = "#" .. name
+local function insert_at_cursor(value, insert_pos, replace_range)
+  local text = normalize_insertion(value)
   if replace_range then
     local r, s, e = replace_range.row, replace_range.col_start, replace_range.col_end
     vim.api.nvim_buf_set_text(0, r, s, r, e, { text })
@@ -151,6 +224,7 @@ function M.pick(opts)
   opts = opts or {}
   opts.origin_win = opts.origin_win or vim.api.nvim_get_current_win()
   local function show(items)
+    items = filter_items_for_token(items, opts.token)
     if #items == 0 then
       vim.notify("No xprompts found", vim.log.levels.WARN)
       if opts.on_cancel then
@@ -186,7 +260,7 @@ function M.pick(opts)
       end,
     }, function(choice)
       if choice then
-        local end_pos = insert_at_cursor(choice.name, opts.insert_pos, opts.replace_range)
+        local end_pos = insert_at_cursor(choice, opts.insert_pos, opts.replace_range)
         restore_insert_mode(opts.origin_win, end_pos)
       elseif opts.on_cancel then
         opts.on_cancel()
@@ -217,5 +291,8 @@ M._format_entry = format_entry
 M._insert_at_cursor = insert_at_cursor
 M._fetch_xprompts = fetch_xprompts
 M._restore_insert_mode = restore_insert_mode
+M._item_insertion = item_insertion
+M._item_kind_label = item_kind_label
+M._filter_items_for_token = filter_items_for_token
 
 return M

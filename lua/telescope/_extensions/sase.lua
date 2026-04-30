@@ -33,7 +33,7 @@ local function make_previewer()
 end
 
 --- Main picker function.
---- @param opts? { items?: table, on_cancel?: fun(), was_insert?: boolean, origin_win?: integer, insert_pos?: { row: integer, col: integer }, replace_range?: { row: integer, col_start: integer, col_end: integer } }
+--- @param opts? table
 local function xprompts_picker(opts)
   opts = opts or {}
 
@@ -58,7 +58,7 @@ local function xprompts_picker(opts)
       local item = entry.value
       local icon = item.type == "workflow" and "⚙" or " "
       -- Build name with input hints.
-      local name = "#" .. item.name
+      local name = xprompt._item_insertion(item)
       local input_parts = {}
       for _, inp in ipairs(item.inputs or {}) do
         input_parts[#input_parts + 1] = inp.required and inp.name or (inp.name .. "?")
@@ -67,7 +67,7 @@ local function xprompts_picker(opts)
         name = name .. "(" .. table.concat(input_parts, ", ") .. ")"
       end
       return displayer({
-        { icon, item.type == "workflow" and "Type" or "Comment" },
+        { icon, xprompt._item_kind_label(item) },
         { name, "Function" },
       })
     end
@@ -94,7 +94,7 @@ local function xprompts_picker(opts)
             selected = true
             actions.close(prompt_bufnr)
             if selection then
-              local end_pos = xprompt._insert_at_cursor(selection.value.name, opts.insert_pos, opts.replace_range)
+              local end_pos = xprompt._insert_at_cursor(selection.value, opts.insert_pos, opts.replace_range)
               xprompt._restore_insert_mode(opts.origin_win, end_pos)
             elseif opts.on_cancel then
               opts.on_cancel()
@@ -231,7 +231,7 @@ local function file_history_picker(opts)
 end
 
 --- File-system completion picker.
---- @param opts? { candidates?: SaseFileCandidate[], token: { text: string, row: integer, col_start: integer, col_end: integer }, cwd: string, on_cancel?: fun(), was_insert?: boolean, origin_win?: integer }
+--- @param opts? table
 local function file_picker(opts)
   opts = opts or {}
   local token = opts.token

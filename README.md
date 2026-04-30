@@ -26,7 +26,7 @@ Insert-mode `<C-t>` opens a context-sensitive picker that mirrors the `sase ace`
 
 | Cursor on…                                   | Opens…                                 |
 | -------------------------------------------- | -------------------------------------- |
-| `#token` (xprompt reference)                 | xprompt picker                         |
+| `#token` / `#!token` (xprompt reference)     | xprompt picker                         |
 | path-like token (`~/foo`, `./bar`, `a/b.c`…) | file-system picker                     |
 | empty / no token                             | recent files picker                    |
 
@@ -40,6 +40,10 @@ require("sase").setup({
 
 All three branches are wired.
 
+XPrompt completion uses `sase xprompt list` insertion metadata. Inline xprompts
+and embeddable workflows insert as `#name`; standalone workflows insert as
+`#!name`. Typing `#!` before `<C-t>` filters the picker to standalone workflows.
+
 In the recent-files picker, `<C-l>` (or `<Enter>`) inserts the highlighted path and `<C-d>`
 removes the highlighted entry from `~/.sase/file_reference_history.json` and refreshes the
 picker in place. Run `:SaseFileHistoryRefresh` to drop the cached list so the next `<C-t>`
@@ -49,6 +53,13 @@ In the file-system picker, candidates come from `sase file list --path <cwd> --t
 so the rules for resolving `~/`, absolute paths, `./`, `../`, and `.sase/` match the TUI.
 Selecting a file inserts the full path; selecting a directory drills down — the picker
 re-opens rooted at the chosen directory.
+
+### XPrompt Picker
+
+Typing `#@` opens the xprompt picker in insert mode. Picker entries show the
+same reference text that will be inserted, so standalone workflows appear as
+`#!sync` while inline-capable prompts and workflows appear as `#commit`. Closing
+the picker without a selection restores the original single `#`.
 
 ### YAML Language Server Schemas
 

@@ -7,7 +7,7 @@
 local M = {}
 
 --- Open the xprompt picker.
---- @param opts? { origin_win?: integer, was_insert?: boolean, token?: { text: string, row: integer, col_start: integer, col_end: integer } }
+--- @param opts? { origin_win?: integer, was_insert?: boolean, token?: SaseTokenInfo }
 function M.pick(opts)
   opts = opts or {}
   local replace_range = nil
@@ -23,6 +23,7 @@ function M.pick(opts)
     origin_win = opts.origin_win,
     was_insert = opts.was_insert,
     replace_range = replace_range,
+    token = token,
   })
 end
 
