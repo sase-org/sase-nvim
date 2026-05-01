@@ -74,6 +74,9 @@ Schema paths are resolved asynchronously via `sase path` to avoid blocking Neovi
 ## Requirements
 
 - Neovim >= 0.8
+- `sase` on `PATH` for xprompt, file completion, file-history, and schema discovery features
+- Optional: `nvim-telescope/telescope.nvim` for the richer picker UI. Without Telescope, pickers fall back to `vim.ui.select`.
+- Optional: `yamlls` / `yaml-language-server` if you want automatic sase YAML schema associations.
 
 ## Installation
 
@@ -102,15 +105,66 @@ use "sase-org/sase-nvim"
 Plug 'sase-org/sase-nvim'
 ```
 
+## Setup
+
+Most plugin files load automatically when Neovim starts:
+
+- `.gp` filetype detection and syntax highlighting
+- `#@` insert-mode xprompt picker trigger
+- `:SaseXPrompts`, `:SaseXPromptsRefresh`, and `:SaseFileHistoryRefresh`
+- YAML schema registration for `yamlls`
+
+The `<C-t>` completion dispatcher is opt-in:
+
+```lua
+require("sase").setup({
+  complete = {
+    keymap = true, -- binds <C-t>
+  },
+})
+```
+
+To use a different insert-mode mapping:
+
+```lua
+require("sase").setup({
+  complete = {
+    keymap = "<C-x><C-s>",
+  },
+})
+```
+
+## Commands
+
+| Command                    | Description                                      |
+| -------------------------- | ------------------------------------------------ |
+| `:SaseXPrompts`            | Open the xprompt picker manually                 |
+| `:SaseXPromptsRefresh`     | Refresh the cached `sase xprompt list` results   |
+| `:SaseFileHistoryRefresh`  | Refresh the cached `sase file-history list` data |
+
 ## Project Structure
 
 ```
 ├── ftdetect/
-│   └── sase_gp.lua         # Filetype detection for .gp files
+│   └── sase_gp.lua              # Filetype detection for .gp files under .sase/projects/
+├── lua/
+│   ├── sase/
+│   │   ├── init.lua             # require("sase").setup entry point
+│   │   ├── xprompt.lua          # #@ xprompt picker core
+│   │   └── complete/
+│   │       ├── _picker.lua      # shared insertion and insert-mode restore helpers
+│   │       ├── _token.lua       # token extraction and completion-mode classification
+│   │       ├── file.lua         # <C-t> file-system completion mode
+│   │       ├── file_history.lua # <C-t> recent-file completion mode
+│   │       └── xprompt.lua      # <C-t> xprompt completion wrapper
+│   └── telescope/
+│       └── _extensions/sase.lua # Telescope pickers for xprompts, files, and recent files
 ├── plugin/
-│   └── sase_yamlls.lua     # YAML language server schema configuration
+│   ├── sase_complete.lua        # completion cache command registration
+│   ├── sase_xprompt.lua         # #@ trigger and xprompt commands
+│   └── sase_yamlls.lua          # YAML language server schema configuration
 └── syntax/
-    └── sase_gp.vim         # Syntax highlighting rules
+    └── sase_gp.vim              # Syntax highlighting rules
 ```
 
 ## License
