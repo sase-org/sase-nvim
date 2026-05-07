@@ -15,19 +15,41 @@ local M = {}
 --- @field kind? "xprompt"|"embeddable_workflow"|"standalone_workflow"
 --- @field prefix? string
 --- @field insertion? string
+--- @field is_skill? boolean
 --- @field source string|nil
 --- @field inputs SaseXPromptInput[]
 --- @field preview string
+--- @field _slash_skill_completion? boolean
 
 --- Cached items from last fetch.
 --- @type SaseXPromptItem[]|nil
 local _cache = nil
+
+--- @param text string|nil
+--- @return boolean
+local function is_slash_skill_token_text(text)
+  return type(text) == "string" and text:match("^/[A-Za-z0-9_]*$") ~= nil
+end
+
+--- @param item SaseXPromptItem
+--- @return SaseXPromptItem
+local function slash_skill_item(item)
+  local copy = {}
+  for key, value in pairs(item) do
+    copy[key] = value
+  end
+  copy._slash_skill_completion = true
+  return copy
+end
 
 --- Return the reference text to insert/display for an xprompt item.
 --- Falls back to legacy fields for older `sase xprompt list` output.
 --- @param item SaseXPromptItem
 --- @return string
 local function item_insertion(item)
+  if item._slash_skill_completion then
+    return "/" .. item.name
+  end
   if type(item.insertion) == "string" and item.insertion ~= "" then
     return item.insertion
   end
@@ -49,6 +71,9 @@ end
 --- @param item SaseXPromptItem
 --- @return string
 local function item_kind_label(item)
+  if item._slash_skill_completion then
+    return "Skill"
+  end
   if item.kind == "standalone_workflow" then
     return "Standalone"
   end
@@ -64,6 +89,22 @@ end
 local function filter_items_for_token(items, token)
   if not token or not token.text or token.text == "" then
     return items
+  end
+
+  if is_slash_skill_token_text(token.text) then
+    local partial_lower = token.text:sub(2):lower()
+    local filtered = {}
+    for _, item in ipairs(items) do
+      local name_matches = item.name:lower():sub(1, #partial_lower) == partial_lower
+      if item.is_skill == true and name_matches then
+        filtered[#filtered + 1] = slash_skill_item(item)
+      end
+    end
+    return filtered
+  end
+
+  if token.text:sub(1, 1) ~= "#" then
+    return {}
   end
 
   local standalone_only = token.text:sub(1, 2) == "#!"
@@ -146,6 +187,9 @@ local function normalize_insertion(value)
     return item_insertion(value)
   end
   if value:sub(1, 1) == "#" then
+    return value
+  end
+  if value:sub(1, 1) == "/" then
     return value
   end
   return "#" .. value
@@ -294,5 +338,6 @@ M._restore_insert_mode = restore_insert_mode
 M._item_insertion = item_insertion
 M._item_kind_label = item_kind_label
 M._filter_items_for_token = filter_items_for_token
+M._is_slash_skill_token_text = is_slash_skill_token_text
 
 return M

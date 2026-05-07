@@ -27,6 +27,7 @@ Insert-mode `<C-t>` opens a context-sensitive picker that mirrors the `sase ace`
 | Cursor on…                                   | Opens…                                 |
 | -------------------------------------------- | -------------------------------------- |
 | `#token` / `#!token` (xprompt reference)     | xprompt picker                         |
+| `/skill` / `/partial` (slash skill)          | skill-filtered xprompt picker          |
 | path-like token (`~/foo`, `./bar`, `a/b.c`…) | file-system picker                     |
 | empty / no token                             | recent files picker                    |
 
@@ -38,11 +39,14 @@ require("sase").setup({
 })
 ```
 
-All three branches are wired.
+All four branches are wired.
 
 XPrompt completion uses `sase xprompt list` insertion metadata. Inline xprompts
 and embeddable workflows insert as `#name`; standalone workflows insert as
 `#!name`. Typing `#!` before `<C-t>` filters the picker to standalone workflows.
+Typing `/` or `/partial` before `<C-t>` filters the picker to entries where
+`sase xprompt list` reports `is_skill = true`, and inserts the selected skill as
+`/name`.
 
 In the recent-files picker, `<C-l>` (or `<Enter>`) inserts the highlighted path and `<C-d>`
 removes the highlighted entry from `~/.sase/file_reference_history.json` and refreshes the

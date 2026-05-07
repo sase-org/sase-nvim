@@ -8,11 +8,31 @@ local M = {}
 --- Characters that terminate a token, matching
 --- _TOKEN_DELIMITERS in src/sase/ace/tui/widgets/file_completion.py.
 local _DELIMS = {
-  ["'"] = true, ['"'] = true, ["`"] = true, ["?"] = true, ["!"] = true,
-  [";"] = true, [","] = true, ["("] = true, [")"] = true, ["["] = true,
-  ["]"] = true, ["{"] = true, ["}"] = true, ["<"] = true, [">"] = true,
-  ["|"] = true, ["&"] = true, ["="] = true, ["+"] = true, ["*"] = true,
-  ["^"] = true, ["%"] = true, ["$"] = true, [":"] = true, ["\\"] = true,
+  ["'"] = true,
+  ['"'] = true,
+  ["`"] = true,
+  ["?"] = true,
+  ["!"] = true,
+  [";"] = true,
+  [","] = true,
+  ["("] = true,
+  [")"] = true,
+  ["["] = true,
+  ["]"] = true,
+  ["{"] = true,
+  ["}"] = true,
+  ["<"] = true,
+  [">"] = true,
+  ["|"] = true,
+  ["&"] = true,
+  ["="] = true,
+  ["+"] = true,
+  ["*"] = true,
+  ["^"] = true,
+  ["%"] = true,
+  ["$"] = true,
+  [":"] = true,
+  ["\\"] = true,
 }
 
 local function is_delim(ch)
@@ -102,6 +122,17 @@ function M.is_xprompt_like(token)
   return token:match("%s") == nil
 end
 
+--- True when *token* looks like a slash-prefixed skill invocation.
+--- Mirrors the TUI's conservative slash-skill completion rule.
+--- @param token string|nil
+--- @return boolean
+function M.is_slash_skill_like(token)
+  if not token or token == "" then
+    return false
+  end
+  return token:match("^/[A-Za-z0-9_]*$") ~= nil
+end
+
 --- True when *token* looks like a filesystem path fragment.
 --- Mirrors file_completion.is_path_like_token.
 --- @param token string|nil
@@ -117,11 +148,21 @@ function M.is_path_like(token)
   if bare == "" then
     return false
   end
-  if bare:sub(1, 2) == "~/" then return true end
-  if bare:sub(1, 1) == "/" then return true end
-  if bare:sub(1, 2) == "./" then return true end
-  if bare:sub(1, 3) == "../" then return true end
-  if bare:sub(1, 6) == ".sase/" then return true end
+  if bare:sub(1, 2) == "~/" then
+    return true
+  end
+  if bare:sub(1, 1) == "/" then
+    return true
+  end
+  if bare:sub(1, 2) == "./" then
+    return true
+  end
+  if bare:sub(1, 3) == "../" then
+    return true
+  end
+  if bare:sub(1, 6) == ".sase/" then
+    return true
+  end
   return bare:find("/", 1, true) ~= nil
 end
 
@@ -135,6 +176,9 @@ function M.classify(token)
     return "file_history"
   end
   if M.is_xprompt_like(token) then
+    return "xprompt"
+  end
+  if M.is_slash_skill_like(token) then
     return "xprompt"
   end
   if M.is_path_like(token) then
