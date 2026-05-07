@@ -7,8 +7,11 @@ local M = {}
 
 local _token = require("sase.complete._token")
 
---- Dispatch <C-t> completion based on what's under the cursor.
-function M.trigger()
+local config = {
+  completion_backend = "legacy",
+}
+
+local function legacy_trigger()
   local info = _token.token_under_cursor()
   local token_text = info and info.text or nil
   local kind = _token.classify(token_text)
@@ -48,20 +51,42 @@ function M.trigger()
   -- Unrecognised token — no-op, same as the TUI.
 end
 
+--- Dispatch <C-t> completion based on what's under the cursor.
+function M.trigger()
+  if config.completion_backend == "lsp" then
+    if require("sase.lsp").complete() then
+      return
+    end
+    legacy_trigger()
+    return
+  end
+
+  if config.completion_backend == "auto" and require("sase.lsp").complete() then
+    return
+  end
+
+  legacy_trigger()
+end
+
 --- Register the <C-t> completion keymap.
 ---
 --- Opt-in: pass `keymap = true` (or a string like "<C-t>") to install
 --- the binding. The default is *no* keymap so users who installed the
 --- plugin only for syntax highlighting don't have their keys clobbered.
---- @param opts? { keymap?: boolean|string }
+--- @param opts? { keymap?: boolean|string, completion_backend?: "auto"|"lsp"|"legacy" }
 function M.setup(opts)
   opts = opts or {}
+  config.completion_backend = opts.completion_backend or "legacy"
   if opts.keymap then
     local lhs = type(opts.keymap) == "string" and opts.keymap or "<C-t>"
     vim.keymap.set("i", lhs, function()
       M.trigger()
     end, { silent = true, desc = "sase completion (xprompt / file / file-history)" })
   end
+end
+
+function M._config()
+  return config
 end
 
 return M

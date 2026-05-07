@@ -22,7 +22,7 @@ colors matching the `sase ace` TUI:
 
 ### `<C-t>` Completion Dispatcher (opt-in)
 
-Insert-mode `<C-t>` opens a context-sensitive picker that mirrors the `sase ace` TUI:
+Insert-mode `<C-t>` opens a context-sensitive picker that mirrors the `sase ace` TUI by default:
 
 | Cursor on…                                   | Opens…                                 |
 | -------------------------------------------- | -------------------------------------- |
@@ -35,11 +35,19 @@ The keymap is **opt-in** — add this to your config to enable it:
 
 ```lua
 require("sase").setup({
-  complete = { keymap = true },  -- or keymap = "<C-t>"
+  complete = {
+    keymap = true,                 -- or keymap = "<C-t>"
+    completion_backend = "legacy", -- "legacy", "lsp", or "auto"
+  },
+  lsp = {
+    enabled = false,
+    cmd = nil, -- string/table override; otherwise SASE_XPROMPT_LSP_CMD, `sase lsp`, or `sase-xprompt-lsp`
+  },
 })
 ```
 
-All four branches are wired.
+All four legacy picker branches are wired. The same keymap can also trigger the xprompt LSP completion path when
+configured with `completion_backend = "lsp"` or `"auto"`.
 
 XPrompt completion uses `sase xprompt list` insertion metadata. Inline xprompts
 and embeddable workflows insert as `#name`; standalone workflows insert as
@@ -75,10 +83,32 @@ Automatically configures `yamlls` with schema associations for sase YAML files:
 
 Schema paths are resolved asynchronously via `sase path` to avoid blocking Neovim startup.
 
+### XPrompt LSP (opt-in)
+
+The plugin can start the SASE xprompt language server for Markdown, git commit, `sase`, and `sase_prompt` buffers.
+Enable it explicitly while the legacy picker remains the conservative default:
+
+```lua
+require("sase").setup({
+  complete = {
+    keymap = true,
+    completion_backend = "auto", -- uses LSP when available, legacy picker otherwise
+  },
+  lsp = {
+    enabled = true,
+    -- cmd = { "sase", "lsp" },
+  },
+})
+```
+
+Command resolution prefers `lsp.cmd`, then `SASE_XPROMPT_LSP_CMD`, then `sase lsp`, then `sase-xprompt-lsp`. The LSP
+client uses `.sase` or `.git` as the project root when available. The `#@` trigger and `:SaseXPrompts` picker commands
+continue to use the legacy picker path.
+
 ## Requirements
 
 - Neovim >= 0.8
-- `sase` on `PATH` for xprompt, file completion, file-history, and schema discovery features
+- `sase` on `PATH` for xprompt, file completion, file-history, schema discovery, and the default LSP wrapper
 - Optional: `nvim-telescope/telescope.nvim` for the richer picker UI. Without Telescope, pickers fall back to `vim.ui.select`.
 - Optional: `yamlls` / `yaml-language-server` if you want automatic sase YAML schema associations.
 
@@ -138,6 +168,20 @@ require("sase").setup({
 })
 ```
 
+To opt into LSP-backed completion with legacy fallback:
+
+```lua
+require("sase").setup({
+  complete = {
+    keymap = true,
+    completion_backend = "auto",
+  },
+  lsp = {
+    enabled = true,
+  },
+})
+```
+
 ## Commands
 
 | Command                    | Description                                      |
@@ -154,6 +198,7 @@ require("sase").setup({
 ├── lua/
 │   ├── sase/
 │   │   ├── init.lua             # require("sase").setup entry point
+│   │   ├── lsp.lua              # xprompt LSP client setup
 │   │   ├── xprompt.lua          # #@ xprompt picker core
 │   │   └── complete/
 │   │       ├── _picker.lua      # shared insertion and insert-mode restore helpers
