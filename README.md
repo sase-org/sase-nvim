@@ -107,6 +107,11 @@ Command resolution prefers `lsp.cmd`, then `SASE_XPROMPT_LSP_CMD`, then a verifi
 `:SaseXPrompts` picker commands remain picker-based browse surfaces. They keep using `sase xprompt list` until the LSP
 exposes a browse/catalog request, and file-history deletion keeps using `sase file-history delete`.
 
+When the LSP is attached, normal Neovim go-to-definition works for disk-backed xprompt references. Use your existing
+LSP mapping, such as `gd`, or call `vim.lsp.buf.definition()` on `#foo`, `#!workflow`, namespaced references like
+`#gh__review`, or slash skills like `/sase_plan`. The plugin does not parse source paths in Lua; it relies on the
+server's standard `textDocument/definition` response.
+
 For troubleshooting, check Neovim's LSP log (`:lua print(vim.lsp.get_log_path())`) and verify the server command with
 `sase lsp --version` or `sase-xprompt-lsp --version`.
 

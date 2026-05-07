@@ -63,6 +63,36 @@ same(lsp._config().enabled, true, "lsp enabled")
 same(lsp._config().cmd, { "fake-lsp" }, "lsp cmd merged")
 same(lsp._config().filetypes, { "markdown" }, "lsp filetypes merged")
 
+vim.bo.filetype = "markdown"
+local original_start = vim.lsp.start
+local captured_config = nil
+local captured_opts = nil
+vim.lsp.start = function(start_config, start_opts)
+  captured_config = start_config
+  captured_opts = start_opts
+  return 123
+end
+
+require("sase").setup({
+  complete = { keymap = false },
+  lsp = { cmd = { "fake-lsp" }, filetypes = { "markdown" } },
+})
+
+vim.lsp.start = original_start
+
+if type(vim.lsp.buf.definition) ~= "function" then
+  error("standard vim.lsp.buf.definition is unavailable")
+end
+same(captured_config.name, "sase-xprompt-lsp", "lsp client name")
+same(captured_config.cmd, { "fake-lsp" }, "lsp start cmd")
+same(
+  captured_config.capabilities.textDocument.definition,
+  { dynamicRegistration = true, linkSupport = true },
+  "definition client capabilities preserved"
+)
+same(captured_config.handlers, nil, "definition uses standard lsp handlers")
+same(captured_opts, { bufnr = 0, silent = true }, "lsp start opts")
+
 require("sase").setup({
   complete = { keymap = false, completion_backend = "legacy" },
   lsp = { enabled = false },
