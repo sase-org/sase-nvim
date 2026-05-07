@@ -7,11 +7,13 @@ local CLIENT_NAME = "sase-xprompt-lsp"
 local GROUP = "SaseXPromptLsp"
 
 local config = {
-  enabled = false,
+  enabled = true,
   cmd = nil,
   filetypes = DEFAULT_FILETYPES,
   autotrigger = true,
 }
+
+local cached_sase_lsp_available = nil
 
 local function copy_list(values)
   local copy = {}
@@ -45,10 +47,24 @@ local function executable(name)
   return vim.fn.executable(name) == 1
 end
 
-function M._resolve_cmd(opts, env, executable_fn)
+local function command_success(cmd)
+  vim.fn.system(cmd)
+  return vim.v.shell_error == 0
+end
+
+local function sase_lsp_available()
+  if cached_sase_lsp_available ~= nil then
+    return cached_sase_lsp_available
+  end
+  cached_sase_lsp_available = command_success({ "sase", "lsp", "--version" })
+  return cached_sase_lsp_available
+end
+
+function M._resolve_cmd(opts, env, executable_fn, sase_lsp_available_fn)
   opts = opts or config
   env = env or vim.env
   executable_fn = executable_fn or executable
+  sase_lsp_available_fn = sase_lsp_available_fn or sase_lsp_available
 
   local explicit = normalize_cmd(opts.cmd)
   if explicit then
@@ -60,7 +76,7 @@ function M._resolve_cmd(opts, env, executable_fn)
     return override
   end
 
-  if executable_fn("sase") then
+  if executable_fn("sase") and sase_lsp_available_fn() then
     return { "sase", "lsp" }
   end
 
@@ -197,8 +213,9 @@ end
 
 function M.setup(opts)
   opts = opts or {}
+  cached_sase_lsp_available = nil
   config = vim.tbl_deep_extend("force", {
-    enabled = false,
+    enabled = true,
     cmd = nil,
     filetypes = DEFAULT_FILETYPES,
     autotrigger = true,

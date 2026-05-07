@@ -1,7 +1,5 @@
--- Pure token extraction + classification helpers for <C-t> completion.
--- Mirrors the rules in src/sase/ace/tui/widgets/file_completion.py and
--- xprompt_completion.py in the main sase repo so the Neovim dispatcher
--- and the TUI agree on what kind of completion a given token should get.
+-- Compatibility token extraction + classification helpers for the legacy
+-- <C-t> picker fallback. Normal completion is served by the xprompt LSP.
 
 local M = {}
 

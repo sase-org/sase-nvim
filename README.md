@@ -22,14 +22,16 @@ colors matching the `sase ace` TUI:
 
 ### `<C-t>` Completion Dispatcher (opt-in)
 
-Insert-mode `<C-t>` opens a context-sensitive picker that mirrors the `sase ace` TUI by default:
+Insert-mode `<C-t>` asks the SASE xprompt LSP for completion when available, then falls back to the legacy picker
+dispatcher when the server command is unavailable or disabled:
 
 | Cursor on…                                   | Opens…                                 |
 | -------------------------------------------- | -------------------------------------- |
-| `#token` / `#!token` (xprompt reference)     | xprompt picker                         |
-| `/skill` / `/partial` (slash skill)          | skill-filtered xprompt picker          |
-| path-like token (`~/foo`, `./bar`, `a/b.c`…) | file-system picker                     |
-| empty / no token                             | recent files picker                    |
+| `#token` / `#!token` (xprompt reference)     | LSP completion, or legacy xprompt picker |
+| `/skill` / `/partial` (slash skill)          | LSP completion, or skill-filtered picker |
+| `%directive`                                 | LSP directive completion                |
+| path-like token (`~/foo`, `./bar`, `a/b.c`…) | LSP file completion, or file picker     |
+| empty / no token                             | LSP recent-file completion, or recent files picker |
 
 The keymap is **opt-in** — add this to your config to enable it:
 
@@ -37,19 +39,20 @@ The keymap is **opt-in** — add this to your config to enable it:
 require("sase").setup({
   complete = {
     keymap = true,                 -- or keymap = "<C-t>"
-    completion_backend = "legacy", -- "legacy", "lsp", or "auto"
+    completion_backend = "auto",   -- "auto", "lsp", or "legacy"
   },
   lsp = {
-    enabled = false,
+    enabled = true,
     cmd = nil, -- string/table override; otherwise SASE_XPROMPT_LSP_CMD, `sase lsp`, or `sase-xprompt-lsp`
   },
 })
 ```
 
-All four legacy picker branches are wired. The same keymap can also trigger the xprompt LSP completion path when
-configured with `completion_backend = "lsp"` or `"auto"`.
+`completion_backend = "auto"` is the default. It uses the LSP when `sase lsp --version` succeeds or
+`sase-xprompt-lsp` is executable, and otherwise keeps the existing picker behavior. Set
+`completion_backend = "legacy"` or `lsp.enabled = false` to keep the old picker-only path.
 
-XPrompt completion uses `sase xprompt list` insertion metadata. Inline xprompts
+The legacy xprompt picker uses `sase xprompt list` insertion metadata. Inline xprompts
 and embeddable workflows insert as `#name`; standalone workflows insert as
 `#!name`. Typing `#!` before `<C-t>` filters the picker to standalone workflows.
 Typing `/` or `/partial` before `<C-t>` filters the picker to entries where
@@ -61,10 +64,8 @@ removes the highlighted entry from `~/.sase/file_reference_history.json` and ref
 picker in place. Run `:SaseFileHistoryRefresh` to drop the cached list so the next `<C-t>`
 re-fetches from `sase file-history list`.
 
-In the file-system picker, candidates come from `sase file list --path <cwd> --token <token>`,
-so the rules for resolving `~/`, absolute paths, `./`, `../`, and `.sase/` match the TUI.
-Selecting a file inserts the full path; selecting a directory drills down — the picker
-re-opens rooted at the chosen directory.
+In the fallback file-system picker, candidates come from `sase file list --path <cwd> --token <token>`. Selecting a file
+inserts the full path; selecting a directory drills down and re-opens the picker rooted at the chosen directory.
 
 ### XPrompt Picker
 
@@ -83,32 +84,37 @@ Automatically configures `yamlls` with schema associations for sase YAML files:
 
 Schema paths are resolved asynchronously via `sase path` to avoid blocking Neovim startup.
 
-### XPrompt LSP (opt-in)
+### XPrompt LSP
 
 The plugin can start the SASE xprompt language server for Markdown, git commit, `sase`, and `sase_prompt` buffers.
-Enable it explicitly while the legacy picker remains the conservative default:
+LSP-backed completion is the normal path after `setup()`:
 
 ```lua
 require("sase").setup({
   complete = {
     keymap = true,
-    completion_backend = "auto", -- uses LSP when available, legacy picker otherwise
+    completion_backend = "auto", -- default: uses LSP when available, legacy picker otherwise
   },
   lsp = {
-    enabled = true,
+    enabled = true, -- default
     -- cmd = { "sase", "lsp" },
   },
 })
 ```
 
-Command resolution prefers `lsp.cmd`, then `SASE_XPROMPT_LSP_CMD`, then `sase lsp`, then `sase-xprompt-lsp`. The LSP
-client uses `.sase` or `.git` as the project root when available. The `#@` trigger and `:SaseXPrompts` picker commands
-continue to use the legacy picker path.
+Command resolution prefers `lsp.cmd`, then `SASE_XPROMPT_LSP_CMD`, then a verified `sase lsp`, then
+`sase-xprompt-lsp`. The LSP client uses `.sase` or `.git` as the project root when available. The `#@` trigger and
+`:SaseXPrompts` picker commands remain picker-based browse surfaces. They keep using `sase xprompt list` until the LSP
+exposes a browse/catalog request, and file-history deletion keeps using `sase file-history delete`.
+
+For troubleshooting, check Neovim's LSP log (`:lua print(vim.lsp.get_log_path())`) and verify the server command with
+`sase lsp --version` or `sase-xprompt-lsp --version`.
 
 ## Requirements
 
 - Neovim >= 0.8
-- `sase` on `PATH` for xprompt, file completion, file-history, schema discovery, and the default LSP wrapper
+- `sase` on `PATH` for picker fallback, file-history deletion, schema discovery, and the default LSP wrapper
+- `sase lsp` support or a standalone `sase-xprompt-lsp` binary for LSP-backed completion
 - Optional: `nvim-telescope/telescope.nvim` for the richer picker UI. Without Telescope, pickers fall back to `vim.ui.select`.
 - Optional: `yamlls` / `yaml-language-server` if you want automatic sase YAML schema associations.
 
@@ -168,16 +174,16 @@ require("sase").setup({
 })
 ```
 
-To opt into LSP-backed completion with legacy fallback:
+To force the picker-only fallback:
 
 ```lua
 require("sase").setup({
   complete = {
     keymap = true,
-    completion_backend = "auto",
+    completion_backend = "legacy",
   },
   lsp = {
-    enabled = true,
+    enabled = false,
   },
 })
 ```
@@ -202,10 +208,10 @@ require("sase").setup({
 │   │   ├── xprompt.lua          # #@ xprompt picker core
 │   │   └── complete/
 │   │       ├── _picker.lua      # shared insertion and insert-mode restore helpers
-│   │       ├── _token.lua       # token extraction and completion-mode classification
-│   │       ├── file.lua         # <C-t> file-system completion mode
-│   │       ├── file_history.lua # <C-t> recent-file completion mode
-│   │       └── xprompt.lua      # <C-t> xprompt completion wrapper
+│   │       ├── _token.lua       # legacy fallback token classification
+│   │       ├── file.lua         # fallback file-system picker
+│   │       ├── file_history.lua # fallback recent-file picker
+│   │       └── xprompt.lua      # fallback xprompt picker wrapper
 │   └── telescope/
 │       └── _extensions/sase.lua # Telescope pickers for xprompts, files, and recent files
 ├── plugin/

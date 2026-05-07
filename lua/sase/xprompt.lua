@@ -1,5 +1,6 @@
--- Core xprompt picker module.
--- Fetches xprompt data via `sase xprompt list` and provides picker functions.
+-- XPrompt browse picker module.
+-- Normal inline completion is LSP-backed. The browse surfaces still fetch via
+-- `sase xprompt list` until the server exposes a catalog/browse request.
 
 local M = {}
 

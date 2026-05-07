@@ -1,14 +1,14 @@
 -- <C-t> completion dispatcher.
 --
--- Reads the token under the cursor, classifies it (xprompt / file /
--- file_history / nil), and hands off to the right per-mode picker.
+-- Uses the xprompt LSP as the normal path when available, with the
+-- compatibility picker dispatcher kept for legacy fallback and browse UI.
 
 local M = {}
 
 local _token = require("sase.complete._token")
 
 local config = {
-  completion_backend = "legacy",
+  completion_backend = "auto",
 }
 
 local function legacy_trigger()
@@ -76,7 +76,7 @@ end
 --- @param opts? { keymap?: boolean|string, completion_backend?: "auto"|"lsp"|"legacy" }
 function M.setup(opts)
   opts = opts or {}
-  config.completion_backend = opts.completion_backend or "legacy"
+  config.completion_backend = opts.completion_backend or "auto"
   if opts.keymap then
     local lhs = type(opts.keymap) == "string" and opts.keymap or "<C-t>"
     vim.keymap.set("i", lhs, function()
