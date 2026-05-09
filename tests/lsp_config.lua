@@ -90,6 +90,11 @@ same(
   { dynamicRegistration = true, linkSupport = true },
   "definition client capabilities preserved"
 )
+same(
+  captured_config.capabilities.textDocument.completion.completionItem.snippetSupport,
+  true,
+  "completion advertises snippet support"
+)
 same(captured_config.handlers, nil, "definition uses standard lsp handlers")
 same(captured_opts, { bufnr = 0, silent = true }, "lsp start opts")
 

@@ -30,6 +30,7 @@ dispatcher when the server command is unavailable or disabled:
 | `#token` / `#!token` (xprompt reference)     | LSP completion, or legacy xprompt picker |
 | `/skill` / `/partial` (slash skill)          | LSP completion, or skill-filtered picker |
 | `%directive`                                 | LSP directive completion                |
+| bare snippet trigger prefix (`foo`)          | LSP SASE snippet completion             |
 | path-like token (`~/foo`, `./bar`, `a/b.c`…) | LSP file completion, or file picker     |
 | empty / no token                             | LSP recent-file completion, or recent files picker |
 
@@ -111,6 +112,17 @@ When the LSP is attached, normal Neovim go-to-definition works for disk-backed x
 LSP mapping, such as `gd`, or call `vim.lsp.buf.definition()` on `#foo`, `#!workflow`, namespaced references like
 `#gh__review`, or slash skills like `/sase_plan`. The plugin does not parse source paths in Lua; it relies on the
 server's standard `textDocument/definition` response.
+
+The LSP client advertises snippet-capable completion, so bare SASE snippet trigger prefixes can complete to
+`CompletionItemKind.Snippet` items supplied by the server. Snippets come from the same Python helper-backed registry as
+the ACE prompt widget, including `ace.snippets` and xprompts marked with `snippet: true` or `snippet: <trigger>`. The
+Lua plugin does not shell out to load that registry.
+
+Manual smoke check:
+
+1. Add a local `sase.yml` with an `ace.snippets` entry and an xprompt with `snippet: true`.
+2. Open a Markdown or SASE prompt buffer under that project and type the snippet trigger prefix.
+3. Invoke LSP completion, accept the snippet item, and verify Neovim expands the `$1`/`$0` tabstops.
 
 For troubleshooting, check Neovim's LSP log (`:lua print(vim.lsp.get_log_path())`) and verify the server command with
 `sase lsp --version` or `sase-xprompt-lsp --version`.
