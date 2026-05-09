@@ -11,6 +11,7 @@ local config = {
   cmd = nil,
   filetypes = DEFAULT_FILETYPES,
   autotrigger = true,
+  native_completion = "auto",
 }
 
 local cached_sase_lsp_available = nil
@@ -142,11 +143,56 @@ local function get_clients(bufnr)
   return vim.lsp.get_active_clients(filter)
 end
 
+local function load_module(name)
+  local ok, module = pcall(require, name)
+  if ok then
+    return module
+  end
+  return nil
+end
+
+function M._has_cmp_completion(require_fn, loaded_modules)
+  loaded_modules = loaded_modules or package.loaded
+  if loaded_modules["cmp"] or loaded_modules["cmp_nvim_lsp"] then
+    return true
+  end
+
+  require_fn = require_fn or load_module
+  return require_fn("cmp_nvim_lsp") ~= nil
+end
+
+function M._native_completion_enabled(native_completion, has_cmp)
+  if native_completion == false then
+    return false
+  end
+  if native_completion == true then
+    return true
+  end
+  return not has_cmp
+end
+
+function M._make_capabilities(require_fn)
+  local capabilities = vim.lsp.protocol.make_client_capabilities()
+  local cmp_nvim_lsp = (require_fn or load_module)("cmp_nvim_lsp")
+  if cmp_nvim_lsp and type(cmp_nvim_lsp.default_capabilities) == "function" then
+    capabilities = cmp_nvim_lsp.default_capabilities(capabilities)
+  end
+  capabilities.textDocument.completion.completionItem.snippetSupport = true
+  return capabilities
+end
+
+local function native_completion_enabled()
+  return M._native_completion_enabled(config.native_completion, M._has_cmp_completion())
+end
+
 function M.is_attached(bufnr)
   return #get_clients(bufnr or 0) > 0
 end
 
 local function enable_completion(client, bufnr)
+  if not native_completion_enabled() then
+    return
+  end
   if not (vim.lsp.completion and vim.lsp.completion.enable) then
     return
   end
@@ -175,14 +221,11 @@ function M.start(bufnr)
     return nil
   end
 
-  local capabilities = vim.lsp.protocol.make_client_capabilities()
-  capabilities.textDocument.completion.completionItem.snippetSupport = true
-
   return vim.lsp.start({
     name = CLIENT_NAME,
     cmd = cmd,
     root_dir = M.root_dir(bufnr),
-    capabilities = capabilities,
+    capabilities = M._make_capabilities(),
     on_attach = enable_completion,
   }, { bufnr = bufnr, silent = true })
 end
@@ -203,6 +246,9 @@ function M.complete()
   if not M.is_attached(bufnr) then
     return false
   end
+  if not native_completion_enabled() then
+    return false
+  end
   if vim.lsp.completion and vim.lsp.completion.get then
     vim.lsp.completion.get()
   else
@@ -219,6 +265,7 @@ function M.setup(opts)
     cmd = nil,
     filetypes = DEFAULT_FILETYPES,
     autotrigger = true,
+    native_completion = "auto",
   }, opts)
 
   local group = vim.api.nvim_create_augroup(GROUP, { clear = true })

@@ -53,6 +53,61 @@ same(
 )
 same(lsp._resolve_cmd({}, {}, executable({}), available(false)), nil, "missing cmd")
 
+same(lsp._native_completion_enabled(false, false), false, "native completion disabled")
+same(lsp._native_completion_enabled(true, true), true, "native completion forced")
+same(lsp._native_completion_enabled("auto", false), true, "native completion auto without cmp")
+same(lsp._native_completion_enabled("auto", true), false, "native completion auto skips cmp")
+same(
+  lsp._has_cmp_completion(function()
+    return nil
+  end, {}),
+  false,
+  "cmp absent"
+)
+same(
+  lsp._has_cmp_completion(function()
+    return {}
+  end, {}),
+  true,
+  "cmp_nvim_lsp module detectable"
+)
+same(
+  lsp._has_cmp_completion(function()
+    return nil
+  end, { cmp = true }),
+  true,
+  "loaded cmp detectable"
+)
+same(
+  lsp._has_cmp_completion(function()
+    return nil
+  end, { cmp_nvim_lsp = true }),
+  true,
+  "loaded cmp_nvim_lsp detectable"
+)
+
+local cmp_capabilities = lsp._make_capabilities(function(name)
+  if name ~= "cmp_nvim_lsp" then
+    error("unexpected module lookup: " .. name)
+  end
+  return {
+    default_capabilities = function(capabilities)
+      capabilities.textDocument.completion.completionItem.resolveSupport = { properties = { "detail" } }
+      return capabilities
+    end,
+  }
+end)
+same(
+  cmp_capabilities.textDocument.completion.completionItem.resolveSupport,
+  { properties = { "detail" } },
+  "cmp capability shape is used when available"
+)
+same(
+  cmp_capabilities.textDocument.completion.completionItem.snippetSupport,
+  true,
+  "cmp capabilities preserve snippet support"
+)
+
 require("sase").setup({
   complete = { keymap = false },
   lsp = { cmd = { "fake-lsp" }, filetypes = { "markdown" } },
@@ -62,6 +117,7 @@ same(require("sase.complete")._config().completion_backend, "auto", "complete ba
 same(lsp._config().enabled, true, "lsp enabled")
 same(lsp._config().cmd, { "fake-lsp" }, "lsp cmd merged")
 same(lsp._config().filetypes, { "markdown" }, "lsp filetypes merged")
+same(lsp._config().native_completion, "auto", "native completion defaults to auto")
 
 vim.bo.filetype = "markdown"
 local original_start = vim.lsp.start
@@ -75,7 +131,7 @@ end
 
 require("sase").setup({
   complete = { keymap = false },
-  lsp = { cmd = { "fake-lsp" }, filetypes = { "markdown" } },
+  lsp = { cmd = { "fake-lsp" }, filetypes = { "markdown" }, native_completion = true },
 })
 
 vim.lsp.start = original_start
@@ -97,6 +153,45 @@ same(
 )
 same(captured_config.handlers, nil, "definition uses standard lsp handlers")
 same(captured_opts, { bufnr = 0, silent = true }, "lsp start opts")
+
+local original_completion = vim.lsp.completion
+local enable_calls = {}
+vim.lsp.completion = {
+  enable = function(...)
+    table.insert(enable_calls, { ... })
+  end,
+}
+
+captured_config.on_attach({
+  id = 7,
+  name = "sase-xprompt-lsp",
+  supports_method = function()
+    return true
+  end,
+}, 0)
+same(#enable_calls, 1, "native completion enabled when requested")
+same(enable_calls[1], { true, 7, 0, { autotrigger = true } }, "native completion enable args")
+
+enable_calls = {}
+vim.lsp.start = function(start_config, start_opts)
+  captured_config = start_config
+  captured_opts = start_opts
+  return 123
+end
+require("sase").setup({
+  complete = { keymap = false },
+  lsp = { cmd = { "fake-lsp" }, filetypes = { "markdown" }, native_completion = false },
+})
+vim.lsp.start = original_start
+captured_config.on_attach({
+  id = 8,
+  name = "sase-xprompt-lsp",
+  supports_method = function()
+    return true
+  end,
+}, 0)
+same(#enable_calls, 0, "native completion skipped when disabled")
+vim.lsp.completion = original_completion
 
 require("sase").setup({
   complete = { keymap = false, completion_backend = "legacy" },

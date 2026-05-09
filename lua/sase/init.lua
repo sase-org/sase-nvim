@@ -10,7 +10,7 @@ local M = {}
 ---   complete = { keymap = true },  -- bind <C-t> in insert mode
 --- })
 --- ```
---- @param opts? { complete?: { keymap?: boolean|string, completion_backend?: "auto"|"lsp"|"legacy" }, lsp?: { enabled?: boolean, cmd?: string|string[] } }
+--- @param opts? { complete?: { keymap?: boolean|string, completion_backend?: "auto"|"lsp"|"legacy" }, lsp?: { enabled?: boolean, cmd?: string|string[], native_completion?: "auto"|boolean } }
 function M.setup(opts)
   opts = opts or {}
   require("sase.lsp").setup(opts.lsp or {})

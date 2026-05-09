@@ -45,6 +45,7 @@ require("sase").setup({
   lsp = {
     enabled = true,
     cmd = nil, -- string/table override; otherwise SASE_XPROMPT_LSP_CMD, `sase lsp`, or `sase-xprompt-lsp`
+    native_completion = "auto", -- true, false, or "auto"
   },
 })
 ```
@@ -52,6 +53,8 @@ require("sase").setup({
 `completion_backend = "auto"` is the default. It uses the LSP when `sase lsp --version` succeeds or
 `sase-xprompt-lsp` is executable, and otherwise keeps the existing picker behavior. Set
 `completion_backend = "legacy"` or `lsp.enabled = false` to keep the old picker-only path.
+`lsp.native_completion = "auto"` enables Neovim's native `vim.lsp.completion` frontend unless `nvim-cmp` /
+`cmp_nvim_lsp` is detected. Set it to `false` when `nvim-cmp` should own LSP completion and snippet expansion.
 
 The legacy xprompt picker uses `sase xprompt list` insertion metadata. Inline xprompts
 and embeddable workflows insert as `#name`; standalone workflows insert as
@@ -99,6 +102,7 @@ require("sase").setup({
   lsp = {
     enabled = true, -- default
     -- cmd = { "sase", "lsp" },
+    -- native_completion = "auto", -- true, false, or "auto"
   },
 })
 ```
@@ -113,10 +117,11 @@ LSP mapping, such as `gd`, or call `vim.lsp.buf.definition()` on `#foo`, `#!work
 `#gh__review`, or slash skills like `/sase_plan`. The plugin does not parse source paths in Lua; it relies on the
 server's standard `textDocument/definition` response.
 
-The LSP client advertises snippet-capable completion, so bare SASE snippet trigger prefixes can complete to
-`CompletionItemKind.Snippet` items supplied by the server. Snippets come from the same Python helper-backed registry as
-the ACE prompt widget, including `ace.snippets` and xprompts marked with `snippet: true` or `snippet: <trigger>`. The
-Lua plugin does not shell out to load that registry.
+The LSP client advertises snippet-capable completion, using `cmp_nvim_lsp.default_capabilities()` when available and a
+snippet-capable fallback otherwise. Bare SASE snippet trigger prefixes can complete to `CompletionItemKind.Snippet`
+items supplied by the server. Snippets come from the same Python helper-backed registry as the ACE prompt widget,
+including `ace.snippets` and xprompts marked with `snippet: true` or `snippet: <trigger>`. The Lua plugin does not shell
+out to load that registry.
 
 Manual smoke check:
 
