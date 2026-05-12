@@ -9,8 +9,9 @@ highlighting for project spec files, plus YAML language server schema configurat
 
 ### Filetype Detection & Syntax Highlighting
 
-Automatic detection and syntax highlighting for project spec files (`~/.sase/projects/<project>/<project>.gp`) with
-colors matching the `sase ace` TUI:
+Automatic detection and syntax highlighting for project spec files
+(`~/.sase/projects/<project>/<project>.sase`; legacy `.gp` files are also
+detected) with colors matching the `sase ace` TUI:
 
 - Field labels (`NAME:`, `STATUS:`, `HOOKS:`, `RUNNING:`, `WORKSPACE_DIR:`, etc.)
 - Status values with distinct colors (WIP, Draft, Ready, Mailed, Submitted, Reverted, Archived)
@@ -171,7 +172,7 @@ Plug 'sase-org/sase-nvim'
 
 Most plugin files load automatically when Neovim starts:
 
-- `.gp` filetype detection and syntax highlighting
+- `.sase` (and legacy `.gp`) filetype detection and syntax highlighting
 - `#@` insert-mode xprompt picker trigger
 - `:SaseXPrompts`, `:SaseXPromptsRefresh`, and `:SaseFileHistoryRefresh`
 - YAML schema registration for `yamlls`
@@ -222,7 +223,7 @@ require("sase").setup({
 
 ```
 ├── ftdetect/
-│   └── sase_gp.lua              # Filetype detection for .gp files under .sase/projects/
+│   └── sase_gp.lua              # Filetype detection for .sase (and legacy .gp) files under .sase/projects/
 ├── lua/
 │   ├── sase/
 │   │   ├── init.lua             # require("sase").setup entry point

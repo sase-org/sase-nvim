@@ -1,6 +1,8 @@
 " Vim syntax file
-" Language:    SASE Project Spec (.gp)
+" Language:    SASE Project Spec (.sase; legacy .gp also supported)
 " Maintainer:  Bryan Bugyi
+" Filetype:    sase_gp (retained for backward compatibility with existing
+"              user configs; matches both .sase and legacy .gp files).
 
 if exists("b:current_syntax")
   finish
