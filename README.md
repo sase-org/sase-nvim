@@ -83,7 +83,7 @@ the picker without a selection restores the original single `#`.
 
 Automatically configures `yamlls` with schema associations for sase YAML files:
 
-- **Config schema** — Applied to `sase.yml` and `sase_*.yml` files
+- **Config schema** — Applied to `sase.yml`, `sase_*.yml`, and `src/sase/default_config.yml` files
 - **XPrompt workflow schema** — Applied to files under `xprompts/` and `.xprompts/` directories
 - **XPrompt collection schema** — Applied to `xprompts.yml` / `xprompts.yaml` files
 
