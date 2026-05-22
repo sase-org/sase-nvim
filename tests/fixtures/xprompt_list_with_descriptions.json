@@ -1,0 +1,30 @@
+[
+  {
+    "name": "review",
+    "type": "xprompt",
+    "kind": "xprompt",
+    "prefix": "#",
+    "insertion": "#review",
+    "is_skill": false,
+    "description": "Review a diff and identify follow-up work.",
+    "source": "/tmp/.xprompts/review.md",
+    "inputs": [
+      {
+        "name": "diff",
+        "type": "path",
+        "required": true,
+        "default": null,
+        "description": "Diff file to review."
+      },
+      {
+        "name": "focus",
+        "type": "word",
+        "required": false,
+        "default": "bugs",
+        "description": "Scope word for the review."
+      }
+    ],
+    "tags": [],
+    "preview": "Review {{ diff }} with {{ focus }}."
+  }
+]

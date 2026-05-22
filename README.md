@@ -62,7 +62,10 @@ and embeddable workflows insert as `#name`; standalone workflows insert as
 `#!name`. Typing `#!` before `<C-t>` filters the picker to standalone workflows.
 Typing `/` or `/partial` before `<C-t>` filters the picker to entries where
 `sase xprompt list` reports `is_skill = true`, and inserts the selected skill as
-`/name`.
+`/name`. When `sase xprompt list` includes descriptions, fallback picker rows show
+the xprompt description, local picker filtering matches xprompt and input
+descriptions, and Telescope previews include described inputs above the existing
+content preview.
 
 In the recent-files picker, `<C-l>` (or `<Enter>`) inserts the highlighted path and `<C-d>`
 removes the highlighted entry from `~/.sase/file_reference_history.json` and refreshes the

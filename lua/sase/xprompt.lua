@@ -9,6 +9,7 @@ local M = {}
 --- @field type string
 --- @field required boolean
 --- @field default string|nil
+--- @field description string|nil
 
 --- @class SaseXPromptItem
 --- @field name string
@@ -17,6 +18,7 @@ local M = {}
 --- @field prefix? string
 --- @field insertion? string
 --- @field is_skill? boolean
+--- @field description string|nil
 --- @field source string|nil
 --- @field inputs SaseXPromptInput[]
 --- @field preview string
@@ -30,6 +32,15 @@ local _cache = nil
 --- @return boolean
 local function is_slash_skill_token_text(text)
   return type(text) == "string" and text:match("^/[A-Za-z0-9_]*$") ~= nil
+end
+
+--- @param value any
+--- @return string|nil
+local function non_empty_string(value)
+  if type(value) ~= "string" or value:match("%S") == nil then
+    return nil
+  end
+  return value
 end
 
 --- @param item SaseXPromptItem
@@ -84,6 +95,80 @@ local function item_kind_label(item)
   return "XPrompt"
 end
 
+--- @param inp SaseXPromptInput
+--- @return string
+local function input_entry_label(inp)
+  if inp.required then
+    return inp.name
+  end
+  return inp.name .. "?"
+end
+
+--- @param inp SaseXPromptInput
+--- @return string
+local function input_display_label(inp)
+  if inp.required then
+    return inp.name
+  end
+  local suffix = (inp.default and inp.default ~= "") and ("=" .. inp.default) or "?"
+  return inp.name .. suffix
+end
+
+--- @param inp SaseXPromptInput
+--- @return string
+local function input_detail_label(inp)
+  local label = inp.name
+  if type(inp.type) == "string" and inp.type ~= "" then
+    label = label .. ": " .. inp.type
+  end
+  if not inp.required then
+    if inp.default and inp.default ~= "" then
+      label = label .. " (default: " .. inp.default .. ")"
+    else
+      label = label .. " (optional)"
+    end
+  end
+  return label
+end
+
+--- @param parts string[]
+--- @param value any
+local function append_search_part(parts, value)
+  local text = non_empty_string(value)
+  if text then
+    parts[#parts + 1] = text:lower()
+  end
+end
+
+--- Search text used by local fallback filters and Telescope ordinal matching.
+--- @param item SaseXPromptItem
+--- @return string
+local function item_search_text(item)
+  local parts = {}
+  append_search_part(parts, item.name)
+  append_search_part(parts, item_insertion(item))
+  append_search_part(parts, item.description)
+  for _, inp in ipairs(item.inputs or {}) do
+    append_search_part(parts, inp.name)
+    append_search_part(parts, inp.description)
+  end
+  return table.concat(parts, "\n")
+end
+
+--- @param item SaseXPromptItem
+--- @param partial string
+--- @return boolean
+local function item_matches_partial(item, partial)
+  if partial == "" then
+    return true
+  end
+  local partial_lower = partial:lower()
+  if item.name:lower():sub(1, #partial_lower) == partial_lower then
+    return true
+  end
+  return item_search_text(item):find(partial_lower, 1, true) ~= nil
+end
+
 --- @param items SaseXPromptItem[]
 --- @param token? { text: string }
 --- @return SaseXPromptItem[]
@@ -93,11 +178,10 @@ local function filter_items_for_token(items, token)
   end
 
   if is_slash_skill_token_text(token.text) then
-    local partial_lower = token.text:sub(2):lower()
+    local partial = token.text:sub(2)
     local filtered = {}
     for _, item in ipairs(items) do
-      local name_matches = item.name:lower():sub(1, #partial_lower) == partial_lower
-      if item.is_skill == true and name_matches then
+      if item.is_skill == true and item_matches_partial(item, partial) then
         filtered[#filtered + 1] = slash_skill_item(item)
       end
     end
@@ -110,11 +194,10 @@ local function filter_items_for_token(items, token)
 
   local standalone_only = token.text:sub(1, 2) == "#!"
   local partial = standalone_only and token.text:sub(3) or token.text:sub(2)
-  local partial_lower = partial:lower()
   local filtered = {}
 
   for _, item in ipairs(items) do
-    if (not standalone_only or is_standalone(item)) and item.name:lower():sub(1, #partial_lower) == partial_lower then
+    if (not standalone_only or is_standalone(item)) and item_matches_partial(item, partial) then
       filtered[#filtered + 1] = item
     end
   end
@@ -152,14 +235,18 @@ end
 local function format_display(item)
   local icon = item.type == "workflow" and "⚙ " or "  "
   local parts = { icon .. item_insertion(item) }
+  local description = non_empty_string(item.description)
+  if description then
+    parts[#parts + 1] = "  " .. description
+  end
   -- Append user-facing input signatures.
   for _, inp in ipairs(item.inputs or {}) do
-    if inp.required then
-      parts[#parts + 1] = "  " .. inp.name
-    else
-      local suffix = (inp.default and inp.default ~= "") and ("=" .. inp.default) or "?"
-      parts[#parts + 1] = "  " .. inp.name .. suffix
+    local line = "  " .. input_display_label(inp)
+    local input_description = non_empty_string(inp.description)
+    if input_description then
+      line = line .. " - " .. input_description
     end
+    parts[#parts + 1] = line
   end
   return table.concat(parts, "\n")
 end
@@ -172,12 +259,70 @@ local function format_entry(item)
   local suffix = ""
   local user_inputs = {}
   for _, inp in ipairs(item.inputs or {}) do
-    user_inputs[#user_inputs + 1] = inp.required and inp.name or (inp.name .. "?")
+    user_inputs[#user_inputs + 1] = input_entry_label(inp)
   end
   if #user_inputs > 0 then
     suffix = "(" .. table.concat(user_inputs, ", ") .. ")"
   end
-  return icon .. item_insertion(item) .. suffix
+  local entry = icon .. item_insertion(item) .. suffix
+  local description = non_empty_string(item.description)
+  if description then
+    entry = entry .. " - " .. description
+  end
+  return entry
+end
+
+--- @param item SaseXPromptItem
+--- @return string[]
+local function preview_lines(item)
+  local lines = {}
+  local description = non_empty_string(item.description)
+  if description then
+    lines[#lines + 1] = "## Description"
+    lines[#lines + 1] = description
+  end
+
+  local input_lines = {}
+  for _, inp in ipairs(item.inputs or {}) do
+    local input_description = non_empty_string(inp.description)
+    if input_description then
+      input_lines[#input_lines + 1] = "- "
+        .. input_detail_label(inp)
+        .. " - "
+        .. input_description
+    end
+  end
+  if #input_lines > 0 then
+    if #lines > 0 then
+      lines[#lines + 1] = ""
+    end
+    lines[#lines + 1] = "## Inputs"
+    for _, line in ipairs(input_lines) do
+      lines[#lines + 1] = line
+    end
+  end
+
+  local preview = non_empty_string(item.preview)
+  if preview then
+    if #lines > 0 then
+      lines[#lines + 1] = ""
+      lines[#lines + 1] = "## Preview"
+    end
+    for _, line in ipairs(vim.split(preview, "\n", { plain = true })) do
+      lines[#lines + 1] = line
+    end
+  end
+
+  if #lines == 0 then
+    return { "" }
+  end
+  return lines
+end
+
+--- @param item SaseXPromptItem
+--- @return string
+local function format_preview(item)
+  return table.concat(preview_lines(item), "\n")
 end
 
 --- Normalize legacy bare names and new catalog insertion values.
@@ -338,7 +483,10 @@ M._fetch_xprompts = fetch_xprompts
 M._restore_insert_mode = restore_insert_mode
 M._item_insertion = item_insertion
 M._item_kind_label = item_kind_label
+M._item_search_text = item_search_text
 M._filter_items_for_token = filter_items_for_token
 M._is_slash_skill_token_text = is_slash_skill_token_text
+M._format_preview = format_preview
+M._preview_lines = preview_lines
 
 return M

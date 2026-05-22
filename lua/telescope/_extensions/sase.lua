@@ -24,7 +24,7 @@ local function make_previewer()
     title = "XPrompt Preview",
     define_preview = function(self, entry)
       local item = entry.value
-      local lines = vim.split(item.preview or "", "\n")
+      local lines = xprompt._preview_lines(item)
       vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, lines)
       -- Use markdown highlighting for preview.
       vim.bo[self.state.bufnr].filetype = "markdown"
@@ -66,6 +66,9 @@ local function xprompts_picker(opts)
       if #input_parts > 0 then
         name = name .. "(" .. table.concat(input_parts, ", ") .. ")"
       end
+      if type(item.description) == "string" and item.description:match("%S") ~= nil then
+        name = name .. " - " .. item.description
+      end
       return displayer({
         { icon, xprompt._item_kind_label(item) },
         { name, "Function" },
@@ -81,7 +84,7 @@ local function xprompts_picker(opts)
             return {
               value = item,
               display = make_display,
-              ordinal = item.name,
+              ordinal = xprompt._item_search_text(item),
             }
           end,
         }),
