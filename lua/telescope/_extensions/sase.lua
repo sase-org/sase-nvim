@@ -66,8 +66,9 @@ local function xprompts_picker(opts)
       if #input_parts > 0 then
         name = name .. "(" .. table.concat(input_parts, ", ") .. ")"
       end
-      if type(item.description) == "string" and item.description:match("%S") ~= nil then
-        name = name .. " - " .. item.description
+      local description = xprompt._single_line_text(item.description)
+      if description then
+        name = name .. " - " .. description
       end
       return displayer({
         { icon, xprompt._item_kind_label(item) },

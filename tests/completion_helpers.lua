@@ -15,6 +15,14 @@ local function contains(text, needle, label)
   end
 end
 
+local function assert_no_newlines(lines, label)
+  for index, line in ipairs(lines) do
+    if line:find("\n", 1, true) or line:find("\r", 1, true) then
+      error(string.format("%s: line %d contains a newline: %s", label, index, vim.inspect(line)))
+    end
+  end
+end
+
 eq(token.is_slash_skill_like("/"), true, "bare slash is slash-skill-like")
 eq(token.is_slash_skill_like("/sase_plan"), true, "identifier slash skill is slash-skill-like")
 eq(token.is_slash_skill_like("/tmp/foo"), false, "absolute path is not slash-skill-like")
@@ -110,3 +118,50 @@ contains(
 )
 contains(preview, "## Preview", "preview keeps content preview section")
 contains(preview, "Review {{ diff }} with {{ focus }}.", "preview keeps existing content preview")
+
+local multiline = {
+  name = "multiline",
+  type = "xprompt",
+  kind = "xprompt",
+  insertion = "#multiline",
+  is_skill = false,
+  description = "Primary line\nSecondary line\r\nThird line\rFourth line",
+  inputs = {
+    {
+      name = "topic",
+      type = "word",
+      required = true,
+      default = nil,
+      description = "Input first line\nInput second line\r\nInput third line\rInput fourth line",
+    },
+  },
+  preview = "Preview first line\nPreview second line\r\nPreview third line\rPreview fourth line",
+}
+
+local multiline_preview_lines = xprompt._preview_lines(multiline)
+assert_no_newlines(multiline_preview_lines, "multiline preview")
+eq(
+  table.concat(multiline_preview_lines, "\n"),
+  "## Description\n"
+    .. "Primary line\n"
+    .. "Secondary line\n"
+    .. "Third line\n"
+    .. "Fourth line\n"
+    .. "\n"
+    .. "## Inputs\n"
+    .. "- topic: word - Input first line\n"
+    .. "  Input second line\n"
+    .. "  Input third line\n"
+    .. "  Input fourth line\n"
+    .. "\n"
+    .. "## Preview\n"
+    .. "Preview first line\n"
+    .. "Preview second line\n"
+    .. "Preview third line\n"
+    .. "Preview fourth line",
+  "preview splits multiline descriptions and body into buffer-safe lines"
+)
+
+local multiline_entry = xprompt._format_entry(multiline)
+assert_no_newlines({ multiline_entry }, "multiline fallback entry")
+contains(multiline_entry, "Primary line Secondary line Third line Fourth line", "entry flattens multiline descriptions")

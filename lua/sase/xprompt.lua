@@ -43,6 +43,58 @@ local function non_empty_string(value)
   return value
 end
 
+--- @param text string
+--- @return string[]
+local function split_buffer_lines(text)
+  local normalized = text:gsub("\r\n", "\n"):gsub("\r", "\n")
+  return vim.split(normalized, "\n", { plain = true })
+end
+
+--- @param lines string[]
+--- @param value any
+--- @param opts? { first_prefix?: string, rest_prefix?: string }
+--- @return boolean
+local function append_text_lines(lines, value, opts)
+  local text = non_empty_string(value)
+  if not text then
+    return false
+  end
+
+  opts = opts or {}
+  local first_prefix = opts.first_prefix or ""
+  local rest_prefix = opts.rest_prefix
+  if rest_prefix == nil then
+    rest_prefix = first_prefix
+  end
+
+  for index, line in ipairs(split_buffer_lines(text)) do
+    local prefix = index == 1 and first_prefix or rest_prefix
+    lines[#lines + 1] = prefix .. line
+  end
+  return true
+end
+
+--- @param value any
+--- @return string|nil
+local function single_line_text(value)
+  local text = non_empty_string(value)
+  if not text then
+    return nil
+  end
+
+  local parts = {}
+  for _, line in ipairs(split_buffer_lines(text)) do
+    local part = line:gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
+    if part ~= "" then
+      parts[#parts + 1] = part
+    end
+  end
+  if #parts == 0 then
+    return nil
+  end
+  return table.concat(parts, " ")
+end
+
 --- @param item SaseXPromptItem
 --- @return SaseXPromptItem
 local function slash_skill_item(item)
@@ -134,7 +186,7 @@ end
 --- @param parts string[]
 --- @param value any
 local function append_search_part(parts, value)
-  local text = non_empty_string(value)
+  local text = single_line_text(value)
   if text then
     parts[#parts + 1] = text:lower()
   end
@@ -152,7 +204,7 @@ local function item_search_text(item)
     append_search_part(parts, inp.name)
     append_search_part(parts, inp.description)
   end
-  return table.concat(parts, "\n")
+  return table.concat(parts, " ")
 end
 
 --- @param item SaseXPromptItem
@@ -235,14 +287,14 @@ end
 local function format_display(item)
   local icon = item.type == "workflow" and "⚙ " or "  "
   local parts = { icon .. item_insertion(item) }
-  local description = non_empty_string(item.description)
+  local description = single_line_text(item.description)
   if description then
     parts[#parts + 1] = "  " .. description
   end
   -- Append user-facing input signatures.
   for _, inp in ipairs(item.inputs or {}) do
     local line = "  " .. input_display_label(inp)
-    local input_description = non_empty_string(inp.description)
+    local input_description = single_line_text(inp.description)
     if input_description then
       line = line .. " - " .. input_description
     end
@@ -265,7 +317,7 @@ local function format_entry(item)
     suffix = "(" .. table.concat(user_inputs, ", ") .. ")"
   end
   local entry = icon .. item_insertion(item) .. suffix
-  local description = non_empty_string(item.description)
+  local description = single_line_text(item.description)
   if description then
     entry = entry .. " - " .. description
   end
@@ -279,17 +331,17 @@ local function preview_lines(item)
   local description = non_empty_string(item.description)
   if description then
     lines[#lines + 1] = "## Description"
-    lines[#lines + 1] = description
+    append_text_lines(lines, description)
   end
 
   local input_lines = {}
   for _, inp in ipairs(item.inputs or {}) do
     local input_description = non_empty_string(inp.description)
     if input_description then
-      input_lines[#input_lines + 1] = "- "
-        .. input_detail_label(inp)
-        .. " - "
-        .. input_description
+      append_text_lines(input_lines, input_description, {
+        first_prefix = "- " .. input_detail_label(inp) .. " - ",
+        rest_prefix = "  ",
+      })
     end
   end
   if #input_lines > 0 then
@@ -308,9 +360,7 @@ local function preview_lines(item)
       lines[#lines + 1] = ""
       lines[#lines + 1] = "## Preview"
     end
-    for _, line in ipairs(vim.split(preview, "\n", { plain = true })) do
-      lines[#lines + 1] = line
-    end
+    append_text_lines(lines, preview)
   end
 
   if #lines == 0 then
@@ -486,6 +536,7 @@ M._item_kind_label = item_kind_label
 M._item_search_text = item_search_text
 M._filter_items_for_token = filter_items_for_token
 M._is_slash_skill_token_text = is_slash_skill_token_text
+M._single_line_text = single_line_text
 M._format_preview = format_preview
 M._preview_lines = preview_lines
 
