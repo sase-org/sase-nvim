@@ -8,7 +8,7 @@ local M = {}
 --- @field name string
 --- @field type string
 --- @field required boolean
---- @field default string|nil
+--- @field default string|number|boolean|nil
 --- @field description string|nil
 
 --- @class SaseXPromptItem
@@ -41,6 +41,24 @@ local function non_empty_string(value)
     return nil
   end
   return value
+end
+
+--- @param value any
+--- @return string|nil
+local function display_scalar_text(value)
+  if value == nil or value == vim.NIL then
+    return nil
+  end
+  if type(value) == "string" then
+    if value == "" then
+      return nil
+    end
+    return value
+  end
+  if type(value) == "number" or type(value) == "boolean" then
+    return tostring(value)
+  end
+  return nil
 end
 
 --- @param text string
@@ -162,7 +180,8 @@ local function input_display_label(inp)
   if inp.required then
     return inp.name
   end
-  local suffix = (inp.default and inp.default ~= "") and ("=" .. inp.default) or "?"
+  local default = display_scalar_text(inp.default)
+  local suffix = default and ("=" .. default) or "?"
   return inp.name .. suffix
 end
 
@@ -174,8 +193,9 @@ local function input_detail_label(inp)
     label = label .. ": " .. inp.type
   end
   if not inp.required then
-    if inp.default and inp.default ~= "" then
-      label = label .. " (default: " .. inp.default .. ")"
+    local default = display_scalar_text(inp.default)
+    if default then
+      label = label .. " (default: " .. default .. ")"
     else
       label = label .. " (optional)"
     end

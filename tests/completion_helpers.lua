@@ -119,6 +119,39 @@ contains(
 contains(preview, "## Preview", "preview keeps content preview section")
 contains(preview, "Review {{ diff }} with {{ focus }}.", "preview keeps existing content preview")
 
+local null_default = {
+  name = "nullable",
+  type = "xprompt",
+  kind = "xprompt",
+  insertion = "#nullable",
+  is_skill = false,
+  inputs = {
+    {
+      name = "topic",
+      type = "word",
+      required = false,
+      default = vim.NIL,
+      description = "Optional topic.",
+    },
+  },
+  preview = "Nullable {{ topic }}.",
+}
+
+local null_preview_ok, null_preview = pcall(xprompt._format_preview, null_default)
+eq(null_preview_ok, true, "preview tolerates optional vim.NIL defaults")
+contains(
+  null_preview,
+  "- topic: word (optional) - Optional topic.",
+  "preview renders optional vim.NIL defaults as optional"
+)
+
+local null_display_ok, null_display = pcall(xprompt._format_display, null_default)
+eq(null_display_ok, true, "display tolerates optional vim.NIL defaults")
+contains(null_display, "  topic? - Optional topic.", "display renders optional vim.NIL defaults with optional marker")
+
+local null_preview_lines = xprompt._preview_lines(null_default)
+assert_no_newlines(null_preview_lines, "null default preview")
+
 local multiline = {
   name = "multiline",
   type = "xprompt",
