@@ -46,6 +46,7 @@ require("sase").setup({
   lsp = {
     enabled = true,
     cmd = nil, -- string/table override; otherwise SASE_XPROMPT_LSP_CMD, `sase lsp`, or `sase-xprompt-lsp`
+    allow_all_markdown = false, -- set true to attach to every Markdown buffer
     native_completion = "auto", -- true, false, or "auto"
   },
 })
@@ -94,8 +95,10 @@ Schema paths are resolved asynchronously via `sase path` to avoid blocking Neovi
 
 ### XPrompt LSP
 
-The plugin can start the SASE xprompt language server for Markdown, git commit, `sase`, and `sase_prompt` buffers.
-LSP-backed completion is the normal path after `setup()`:
+The plugin can start the SASE xprompt language server for git commit, `sase`, `sase_prompt`, and prompt-oriented
+Markdown buffers. Plain Markdown prose files are skipped by default. Markdown buffers are eligible when they are under an
+`xprompts/` or `.xprompts/` directory, or when their filename matches SASE prompt editor temporary files such as
+`sase_ace_prompt_*.md` or `sase_prompt_*.md`. LSP-backed completion is the normal path after `setup()`:
 
 ```lua
 require("sase").setup({
@@ -106,13 +109,15 @@ require("sase").setup({
   lsp = {
     enabled = true, -- default
     -- cmd = { "sase", "lsp" },
+    -- allow_all_markdown = false, -- set true for legacy all-Markdown attachment
     -- native_completion = "auto", -- true, false, or "auto"
   },
 })
 ```
 
 Command resolution prefers `lsp.cmd`, then `SASE_XPROMPT_LSP_CMD`, then a verified `sase lsp`, then
-`sase-xprompt-lsp`. The LSP client uses `.sase` or `.git` as the project root when available. The `#@` trigger and
+`sase-xprompt-lsp`. Set `lsp.allow_all_markdown = true` only if you want the legacy behavior where every Markdown buffer
+can attach to the xprompt LSP. The LSP client uses `.sase` or `.git` as the project root when available. The `#@` trigger and
 `:SaseXPrompts` picker commands remain picker-based browse surfaces. They keep using `sase xprompt list` until the LSP
 exposes a browse/catalog request, and file-history deletion keeps using `sase file-history delete`.
 
@@ -130,7 +135,7 @@ out to load that registry.
 Manual smoke check:
 
 1. Add a local `sase.yml` with an `ace.snippets` entry and an xprompt with `snippet: true`.
-2. Open a Markdown or SASE prompt buffer under that project and type the snippet trigger prefix.
+2. Open an eligible Markdown or SASE prompt buffer under that project and type the snippet trigger prefix.
 3. Invoke LSP completion, accept the snippet item, and verify Neovim expands the `$1`/`$0` tabstops.
 
 For troubleshooting, check Neovim's LSP log (`:lua print(vim.lsp.get_log_path())`) and verify the server command with

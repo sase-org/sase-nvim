@@ -117,8 +117,43 @@ same(require("sase.complete")._config().completion_backend, "auto", "complete ba
 same(lsp._config().enabled, true, "lsp enabled")
 same(lsp._config().cmd, { "fake-lsp" }, "lsp cmd merged")
 same(lsp._config().filetypes, { "markdown" }, "lsp filetypes merged")
+same(lsp._config().allow_all_markdown, false, "all-markdown attachment is off by default")
 same(lsp._config().native_completion, "auto", "native completion defaults to auto")
 
+same(lsp._is_supported_markdown_path("/tmp/project/xprompts/foo.md"), true, "xprompts markdown is supported")
+same(lsp._is_supported_markdown_path("/tmp/project/.xprompts/foo.md"), true, ".xprompts markdown is supported")
+same(lsp._is_supported_markdown_path("/tmp/sase_ace_prompt_abc.md"), true, "ace prompt temp markdown is supported")
+same(lsp._is_supported_markdown_path("/tmp/sase_prompt_abc.md"), true, "cli prompt temp markdown is supported")
+same(
+  lsp._is_supported_markdown_path("/tmp/project/sdd/research/202605/memory_system_prior_art.md"),
+  false,
+  "ordinary research markdown is unsupported"
+)
+same(
+  lsp._supports_filetype_path(
+    "markdown",
+    "/tmp/project/sdd/research/202605/memory_system_prior_art.md",
+    { filetypes = { "markdown" } }
+  ),
+  false,
+  "ordinary markdown is not supported by default"
+)
+same(
+  lsp._supports_filetype_path(
+    "markdown",
+    "/tmp/project/sdd/research/202605/memory_system_prior_art.md",
+    { filetypes = { "markdown" }, allow_all_markdown = true }
+  ),
+  true,
+  "all-markdown opt-in preserves legacy support"
+)
+same(
+  lsp._supports_filetype_path("sase_prompt", "", { filetypes = { "markdown", "sase_prompt" } }),
+  true,
+  "sase_prompt filetype support does not require a markdown path"
+)
+
+vim.api.nvim_buf_set_name(0, vim.fn.getcwd() .. "/xprompts/current.md")
 vim.bo.filetype = "markdown"
 local original_start = vim.lsp.start
 local captured_config = nil
@@ -151,6 +186,7 @@ same(
   true,
   "completion advertises snippet support"
 )
+same(captured_config.init_options, { allow_all_markdown = false }, "lsp init options default to narrowed markdown")
 same(captured_config.handlers, nil, "definition uses standard lsp handlers")
 same(captured_opts, { bufnr = 0, silent = true }, "lsp start opts")
 

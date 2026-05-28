@@ -10,6 +10,7 @@ local config = {
   enabled = true,
   cmd = nil,
   filetypes = DEFAULT_FILETYPES,
+  allow_all_markdown = false,
   autotrigger = true,
   native_completion = "auto",
 }
@@ -129,10 +130,50 @@ local function filetype_set(filetypes)
   return set
 end
 
+local function basename(path)
+  local normalized = (path or ""):gsub("\\", "/")
+  return normalized:match("([^/]+)$") or normalized
+end
+
+local function has_path_component(path, expected)
+  for component in (path or ""):gsub("\\", "/"):gmatch("[^/]+") do
+    if component == expected then
+      return true
+    end
+  end
+  return false
+end
+
+local function has_prompt_temp_name(path)
+  local name = basename(path)
+  return name:match("^sase_ace_prompt_.+%.md$") ~= nil or name:match("^sase_prompt_.+%.md$") ~= nil
+end
+
+local function is_supported_markdown_path(path)
+  if type(path) ~= "string" or path == "" then
+    return false
+  end
+  return has_path_component(path, "xprompts")
+    or has_path_component(path, ".xprompts")
+    or has_prompt_temp_name(path)
+end
+
+local function supports_filetype_path(ft, path, opts)
+  opts = opts or config
+  if filetype_set(opts.filetypes)[ft] ~= true then
+    return false
+  end
+  if ft ~= "markdown" then
+    return true
+  end
+  return opts.allow_all_markdown == true or is_supported_markdown_path(path)
+end
+
 function M.supports_buffer(bufnr)
   bufnr = bufnr or 0
   local ft = vim.bo[bufnr].filetype
-  return filetype_set(config.filetypes)[ft] == true
+  local path = vim.api.nvim_buf_get_name(bufnr)
+  return supports_filetype_path(ft, path, config)
 end
 
 local function get_clients(bufnr)
@@ -226,6 +267,9 @@ function M.start(bufnr)
     cmd = cmd,
     root_dir = M.root_dir(bufnr),
     capabilities = M._make_capabilities(),
+    init_options = {
+      allow_all_markdown = config.allow_all_markdown == true,
+    },
     on_attach = enable_completion,
   }, { bufnr = bufnr, silent = true })
 end
@@ -264,6 +308,7 @@ function M.setup(opts)
     enabled = true,
     cmd = nil,
     filetypes = DEFAULT_FILETYPES,
+    allow_all_markdown = false,
     autotrigger = true,
     native_completion = "auto",
   }, opts)
@@ -289,5 +334,8 @@ end
 function M._config()
   return config
 end
+
+M._is_supported_markdown_path = is_supported_markdown_path
+M._supports_filetype_path = supports_filetype_path
 
 return M

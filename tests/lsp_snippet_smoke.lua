@@ -148,7 +148,7 @@ vim.fn.writefile({
   "    content: 'XPrompt body'",
 }, root .. "/sase.yml")
 
-local prompt_path = root .. "/prompt.md"
+local prompt_path = root .. "/sase_prompt_snippet_smoke.md"
 vim.fn.writefile({ "" }, prompt_path)
 
 vim.cmd("cd " .. vim.fn.fnameescape(root))

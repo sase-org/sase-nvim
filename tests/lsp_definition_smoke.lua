@@ -39,7 +39,7 @@ vim.fn.mkdir(root .. "/.xprompts", "p")
 
 local project = vim.fn.fnamemodify(root, ":t")
 local source_path = root .. "/.xprompts/local.md"
-local prompt_path = root .. "/prompt.md"
+local prompt_path = root .. "/sase_prompt_definition_smoke.md"
 vim.fn.writefile({ "Local xprompt definition body" }, source_path)
 vim.fn.writefile({ "#" .. project .. "/local" }, prompt_path)
 
