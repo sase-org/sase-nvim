@@ -122,6 +122,11 @@ same(lsp._config().native_completion, "auto", "native completion defaults to aut
 
 same(lsp._is_supported_markdown_path("/tmp/project/xprompts/foo.md"), true, "xprompts markdown is supported")
 same(lsp._is_supported_markdown_path("/tmp/project/.xprompts/foo.md"), true, ".xprompts markdown is supported")
+same(
+  lsp._is_supported_markdown_path("/tmp/project/src/sase/default_xprompts/research_swarm.md"),
+  true,
+  "default_xprompts markdown is supported"
+)
 same(lsp._is_supported_markdown_path("/tmp/sase_ace_prompt_abc.md"), true, "ace prompt temp markdown is supported")
 same(lsp._is_supported_markdown_path("/tmp/sase_prompt_abc.md"), true, "cli prompt temp markdown is supported")
 same(

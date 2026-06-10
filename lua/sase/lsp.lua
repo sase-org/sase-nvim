@@ -155,6 +155,7 @@ local function is_supported_markdown_path(path)
   end
   return has_path_component(path, "xprompts")
     or has_path_component(path, ".xprompts")
+    or has_path_component(path, "default_xprompts")
     or has_prompt_temp_name(path)
 end
 
