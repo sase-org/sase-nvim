@@ -1,4 +1,4 @@
--- Headless smoke test for the `+` VCS project completion served by the xprompt
+-- Headless smoke test for the `#+` VCS project completion served by the xprompt
 -- LSP. Confirms Neovim auto-picks up the `+` trigger character from the server
 -- capabilities and that the canonical expansion (including replacing an existing
 -- leading VCS tag) applies correctly in a real buffer.
@@ -6,7 +6,7 @@
 -- Neovim's native `vim.lsp.completion` applies the selected item's primary
 -- `textEdit` (as the inserted word) plus its `additionalTextEdits` on
 -- `CompleteDone`. This test exercises the same edits through
--- `vim.lsp.util.apply_text_edits`, so a green run means a confirmed `+`
+-- `vim.lsp.util.apply_text_edits`, so a green run means a confirmed `#+`
 -- completion rewrites the buffer exactly like the TUI.
 
 local repo_dir = vim.fn.getcwd()
@@ -112,7 +112,7 @@ local function find_item(items, label)
   return nil
 end
 
---- Drive a `+` completion for a single-line prompt, then apply the accepted
+--- Drive a `#+` completion for a single-line prompt, then apply the accepted
 --- item's edits to the live buffer exactly as native completion does on
 --- `CompleteDone` (primary `textEdit` plus `additionalTextEdits`), and assert
 --- the buffer matches the canonical expansion. Using the real attached buffer
@@ -125,7 +125,7 @@ local function assert_expansion(line, expected)
   if not item then
     fail("missing `sase` completion item for line '" .. line .. "': " .. vim.inspect(items))
   end
-  if item.filterText ~= "+sase" then
+  if item.filterText ~= "#+sase" then
     fail("filterText mismatch for '" .. line .. "': " .. vim.inspect(item.filterText))
   end
   local detail = item.detail or ""
@@ -201,18 +201,18 @@ wait_for_client(client_id)
 
 assert_plus_trigger(client_id)
 
--- Realistic end-of-line `+` triggers from the plan's parity table (selected
+-- Realistic end-of-line `#+` triggers from the plan's parity table (selected
 -- project `sase`). The exhaustive golden table is unit-tested in the Python
 -- (Phase 1) and Rust (Phase 3) suites; here we confirm the integration applies
 -- the same expansion in a live Neovim buffer.
 -- Start-of-line trigger on an otherwise-empty first line must not insert a
 -- blank line above the expanded VCS tag.
-assert_expansion("+s", "#gh:sase ")
-assert_expansion("Describe this repo. +", "#gh:sase Describe this repo.")
+assert_expansion("#+s", "#gh:sase ")
+assert_expansion("Describe this repo. #+", "#gh:sase Describe this repo.")
 -- Replace-existing: a leading VCS tag is swapped, never stacked.
-assert_expansion("#git:foo Fix bug +", "#gh:sase Fix bug")
+assert_expansion("#git:foo Fix bug #+", "#gh:sase Fix bug")
 -- Replace-existing with a HITL suffix on the old tag (the suffix is dropped).
-assert_expansion("#gh!!:foo do X +", "#gh:sase do X")
+assert_expansion("#gh!!:foo do X #+", "#gh:sase do X")
 
 local client = vim.lsp.get_client_by_id(client_id)
 if client and client.stop then

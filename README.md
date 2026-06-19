@@ -31,7 +31,7 @@ dispatcher when the server command is unavailable or disabled:
 | `#token` / `#!token` (xprompt reference)     | LSP completion, or legacy xprompt picker |
 | `/skill` / `/partial` (slash skill)          | LSP completion, or skill-filtered picker |
 | `%directive`                                 | LSP directive completion                |
-| `+` / `+project` (VCS project trigger)       | LSP VCS project completion (expands to `#gh:sase …`) |
+| `#+` / `#+project` (VCS project trigger)     | LSP VCS project completion (expands to `#gh:sase …`) |
 | bare snippet trigger prefix (`foo`)          | LSP SASE snippet completion             |
 | path-like token (`~/foo`, `./bar`, `a/b.c`…) | LSP file completion, or file picker     |
 | empty / no token                             | LSP recent-file completion, or recent files picker |
@@ -133,9 +133,9 @@ items supplied by the server. Snippets come from the same Python helper-backed r
 including `ace.snippets` and xprompts marked with `snippet: true` or `snippet: <trigger>`. The Lua plugin does not shell
 out to load that registry.
 
-The server also advertises `+` as a completion trigger character. Typing `+` at the start of a line, at end of buffer,
-or after whitespace opens a menu of active VCS projects; typing `+sa` filters by project name. Accepting an item
-prepends the project's VCS xprompt workflow tag (e.g. `#gh:sase`) to the start of the prompt and removes the `+query`
+The server also advertises `+` as a completion trigger character. Typing `#+` at the start of a line, at end of buffer,
+or after whitespace opens a menu of active VCS projects; typing `#+sa` filters by project name. Accepting an item
+prepends the project's VCS xprompt workflow tag (e.g. `#gh:sase`) to the start of the prompt and removes the `#+query`
 token, replacing any VCS tag already present rather than stacking a second one. This is served entirely by the LSP —
 native `vim.lsp.completion` inherits the `+` trigger and applies the prepend/replace as an `additionalTextEdits` edit,
 and `nvim-cmp` picks it up the same way through `cmp_nvim_lsp.default_capabilities()`. No extra Lua configuration is
@@ -148,10 +148,10 @@ Manual smoke check (snippets):
 2. Open an eligible Markdown or SASE prompt buffer under that project and type the snippet trigger prefix.
 3. Invoke LSP completion, accept the snippet item, and verify Neovim expands the `$1`/`$0` tabstops.
 
-Manual smoke check (`+` VCS project completion):
+Manual smoke check (`#+` VCS project completion):
 
 1. From an active SASE project, open an eligible buffer (e.g. `sase_prompt_*.md`) under a `.sase`/`.git` root.
-2. Type a prompt followed by `+` (for example `Describe this repo. +`); the project menu opens. Filter with `+sa`.
+2. Type a prompt followed by `#+` (for example `Describe this repo. #+`); the project menu opens. Filter with `#+sa`.
 3. Accept a project and verify the prompt becomes `#gh:<project> Describe this repo.` with any prior VCS tag replaced.
 
 The headless equivalent of this check lives in `tests/lsp_vcs_project_smoke.lua`.
