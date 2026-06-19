@@ -20,6 +20,14 @@ local function available(value)
   end
 end
 
+local function get_hl(name)
+  if vim.api.nvim_get_hl then
+    return vim.api.nvim_get_hl(0, { name = name })
+  end
+  local legacy = vim.api.nvim_get_hl_by_name(name, true)
+  return { fg = legacy.foreground, bold = legacy.bold }
+end
+
 same(
   lsp._resolve_cmd({ cmd = { "custom-lsp", "--stdio" } }, {}, executable({}), available(false)),
   { "custom-lsp", "--stdio" },
@@ -113,6 +121,14 @@ require("sase").setup({
   lsp = { cmd = { "fake-lsp" }, filetypes = { "markdown" } },
 })
 
+local separator_hl = get_hl("@lsp.type.xpromptSeparator")
+same(
+  require("sase.highlights")._config().xprompt_separator,
+  { fg = "#D75FFF", bold = true, ctermfg = 171 },
+  "xprompt separator highlight defaults"
+)
+same(separator_hl.fg, tonumber("D75FFF", 16), "xprompt separator highlight fg")
+same(separator_hl.bold, true, "xprompt separator highlight bold")
 same(require("sase.complete")._config().completion_backend, "auto", "complete backend defaults to auto")
 same(lsp._config().enabled, true, "lsp enabled")
 same(lsp._config().cmd, { "fake-lsp" }, "lsp cmd merged")

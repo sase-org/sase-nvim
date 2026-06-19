@@ -49,6 +49,9 @@ require("sase").setup({
     allow_all_markdown = false, -- set true to attach to every Markdown buffer
     native_completion = "auto", -- true, false, or "auto"
   },
+  highlights = {
+    xprompt_separator = { fg = "#D75FFF", bold = true, ctermfg = 171 },
+  },
 })
 ```
 
@@ -112,6 +115,10 @@ require("sase").setup({
     -- allow_all_markdown = false, -- set true for legacy all-Markdown attachment
     -- native_completion = "auto", -- true, false, or "auto"
   },
+  highlights = {
+    -- Used for LSP semantic tokens on multi-agent prompt `---` separators.
+    xprompt_separator = { fg = "#D75FFF", bold = true, ctermfg = 171 },
+  },
 })
 ```
 
@@ -131,6 +138,10 @@ snippet-capable fallback otherwise. Bare SASE snippet trigger prefixes can compl
 items supplied by the server. Snippets come from the same Python helper-backed registry as the ACE prompt widget,
 including `ace.snippets` and xprompts marked with `snippet: true` or `snippet: <trigger>`. The Lua plugin does not shell
 out to load that registry.
+
+When the server advertises semantic tokens, multi-agent prompt `---` separators use the Neovim highlight group
+`@lsp.type.xpromptSeparator`. The default is luminous violet (`#D75FFF`, bold, cterm `171`). Override it with
+`highlights.xprompt_separator` in `setup()`, or set that option to `false` and define the highlight group yourself.
 
 Manual smoke check:
 
