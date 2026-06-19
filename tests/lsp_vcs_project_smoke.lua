@@ -112,12 +112,12 @@ local function find_item(items, label)
   return nil
 end
 
---- Drive a `+` completion for a single-line prompt where the `+query` trigger
---- sits at end of line, then apply the accepted item's edits to the live buffer
---- exactly as native completion does on `CompleteDone` (primary `textEdit` plus
---- `additionalTextEdits`), and assert the buffer matches the canonical
---- expansion. Using the real attached buffer keeps the test faithful to the
---- document the server actually saw.
+--- Drive a `+` completion for a single-line prompt, then apply the accepted
+--- item's edits to the live buffer exactly as native completion does on
+--- `CompleteDone` (primary `textEdit` plus `additionalTextEdits`), and assert
+--- the buffer matches the canonical expansion. Using the real attached buffer
+--- keeps the test faithful to the document the server actually saw, including
+--- Neovim's normal trailing line ending.
 local function assert_expansion(line, expected)
   local character = #line
   local items = completion_items(line, character)
@@ -205,6 +205,9 @@ assert_plus_trigger(client_id)
 -- project `sase`). The exhaustive golden table is unit-tested in the Python
 -- (Phase 1) and Rust (Phase 3) suites; here we confirm the integration applies
 -- the same expansion in a live Neovim buffer.
+-- Start-of-line trigger on an otherwise-empty first line must not insert a
+-- blank line above the expanded VCS tag.
+assert_expansion("+s", "#gh:sase ")
 assert_expansion("Describe this repo. +", "#gh:sase Describe this repo.")
 -- Replace-existing: a leading VCS tag is swapped, never stacked.
 assert_expansion("#git:foo Fix bug +", "#gh:sase Fix bug")
