@@ -159,6 +159,56 @@ The headless equivalent of this check lives in `tests/lsp_vcs_project_smoke.lua`
 For troubleshooting, check Neovim's LSP log (`:lua print(vim.lsp.get_log_path())`) and verify the server command with
 `sase lsp --version` or `sase-xprompt-lsp --version`.
 
+### Alt Brace Syntax (`%{...}`)
+
+The plugin highlights and helps edit the `%{A | B}` alt fan-out shorthand (sase's preferred spelling for `%alt(A, B)`)
+in the same prompt-oriented buffers the LSP attaches to: `gitcommit`, `sase`, `sase_prompt`, and eligible `markdown`
+buffers (under `xprompts/` / `.xprompts/` or matching SASE prompt temp files), honoring `allow_all_markdown`. Both
+features are on by default after `setup()` and inherit the LSP filetype and `allow_all_markdown` settings.
+
+**Highlighting** marks each part of a fan-out with its own highlight group, so delimiters read differently from branch
+separators:
+
+| Highlight group     | Spans                                       | Default link |
+| ------------------- | ------------------------------------------- | ------------ |
+| `SaseAltDelimiter`  | `%{` openers and `}` closers                | `Delimiter`  |
+| `SaseAltSeparator`  | top-level `\|` branch separators            | `Operator`   |
+| `SaseAltBranchName` | `name=` named-branch prefixes               | `Identifier` |
+| `SaseAltError`      | unmatched `%{` openers                      | `Error`      |
+
+Override the look by linking or defining those groups in your colorscheme (e.g.
+`vim.api.nvim_set_hl(0, "SaseAltDelimiter", { link = "Special" })`).
+
+**Editing** mirrors the ACE prompt input and fires only inside the `%{...}` shorthand:
+
+- Typing `{` right after a directive-valid `%` auto-pairs to `%{}` with the cursor between the braces.
+- Backspacing the `{` in `%{}` (or forward-deleting it) removes the paired `}`.
+- Typing `|` inside a live `%{...}` span inserts a padded ` | ` separator, keeps the cursor before the closing `}`, and
+  normalizes comma spacing in the current branch — for example, typing `|` after `%{foo ,bar, and baz` yields
+  `%{foo, bar, and baz | }`.
+
+The `#@` xprompt picker trigger and ordinary `{` / `|` typing outside a `%{...}` context are unaffected.
+
+Configure or disable either feature through `setup()`:
+
+```lua
+require("sase").setup({
+  alt_highlight = {
+    enabled = true,             -- default
+    allow_all_markdown = false, -- inherits from lsp.allow_all_markdown by default
+    -- filetypes = { "markdown", "gitcommit", "sase", "sase_prompt" }, -- inherits from lsp.filetypes
+  },
+  alt_editing = {
+    enabled = true,             -- default
+    allow_all_markdown = false, -- inherits from lsp.allow_all_markdown by default
+    -- filetypes = { ... },     -- inherits from lsp.filetypes
+  },
+})
+```
+
+The legacy `%(A, B)` shorthand still launches correctly, but new prompts should prefer `%{A | B}`; only the brace form
+is highlighted and auto-edited.
+
 ## Requirements
 
 - Neovim >= 0.8
