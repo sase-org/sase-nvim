@@ -179,15 +179,14 @@ separators:
 Override the look by linking or defining those groups in your colorscheme (e.g.
 `vim.api.nvim_set_hl(0, "SaseAltDelimiter", { link = "Special" })`).
 
-**Editing** mirrors the ACE prompt input and fires only inside the `%{...}` shorthand:
+**Editing** mirrors the ACE prompt input and fires only for `|` separators inside the `%{...}` shorthand:
 
-- Typing `{` right after a directive-valid `%` auto-pairs to `%{}` with the cursor between the braces.
-- Backspacing the `{` in `%{}` (or forward-deleting it) removes the paired `}`.
 - Typing `|` inside a live `%{...}` span inserts a padded ` | ` separator, keeps the cursor before the closing `}`, and
   normalizes comma spacing in the current branch — for example, typing `|` after `%{foo ,bar, and baz` yields
   `%{foo, bar, and baz | }`.
 
-The `#@` xprompt picker trigger and ordinary `{` / `|` typing outside a `%{...}` context are unaffected.
+The plugin does not auto-pair `%{` or paired-delete an empty `%{}`; use your normal editor auto-pair plugin if you want
+brace pairing. The `#@` xprompt picker trigger and ordinary `|` typing outside a `%{...}` context are unaffected.
 
 Configure or disable either feature through `setup()`:
 
@@ -207,7 +206,7 @@ require("sase").setup({
 ```
 
 The legacy `%(A, B)` shorthand still launches correctly, but new prompts should prefer `%{A | B}`; only the brace form
-is highlighted and auto-edited.
+is highlighted and separator-edited.
 
 ## Requirements
 

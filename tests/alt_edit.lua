@@ -20,24 +20,6 @@ end
 
 -- --- Pure planners --------------------------------------------------------- #
 
--- plan_auto_pair: insert `{}` only directly after a directive-valid `%`.
-same(alt.plan_auto_pair("%", 1), { start = 1, stop = 1, text = "{}", cursor = 2 }, "auto-pair at start")
-same(alt.plan_auto_pair("run %", 5), { start = 5, stop = 5, text = "{}", cursor = 6 }, "auto-pair after space")
-same(alt.plan_auto_pair("(%", 2), { start = 2, stop = 2, text = "{}", cursor = 3 }, "auto-pair after paren")
-same(alt.plan_auto_pair("a%", 2), nil, "auto-pair rejects non-directive percent")
-same(alt.plan_auto_pair("ab", 2), nil, "auto-pair requires a percent before")
--- The inserted `}` must not run into following non-whitespace text.
-same(alt.plan_auto_pair("%foo", 1), nil, "auto-pair rejected when text follows")
-same(alt.plan_auto_pair("% foo", 1), { start = 1, stop = 1, text = "{}", cursor = 2 }, "auto-pair ok before whitespace")
-
--- plan_paired_delete_left/right: only an empty directive `%{}` pair.
-same(alt.plan_paired_delete_left("%{}", 2), { start = 1, stop = 3, text = "", cursor = 1 }, "paired backspace empty")
-same(alt.plan_paired_delete_left("%{x}", 2), nil, "paired backspace rejects non-empty")
-same(alt.plan_paired_delete_left("a{}", 2), nil, "paired backspace rejects non-directive")
-same(alt.plan_paired_delete_right("%{}", 1), { start = 1, stop = 3, text = "", cursor = 1 }, "paired delete empty")
-same(alt.plan_paired_delete_right("%{x}", 1), nil, "paired delete rejects non-empty")
-same(alt.plan_paired_delete_right("a{}", 1), nil, "paired delete rejects non-directive")
-
 -- plan_separator: padded `|`, with comma-spacing normalization of the branch.
 same(alt.plan_separator("%{foo}", 5), { start = 2, stop = 5, text = "foo | ", cursor = 8 }, "separator simple branch")
 same(
@@ -45,6 +27,7 @@ same(
   { start = 2, stop = 19, text = "foo, bar, and baz | ", cursor = 22 },
   "separator acceptance example"
 )
+same(alt.plan_separator("%{foo", 5), { start = 2, stop = 5, text = "foo | ", cursor = 8 }, "separator unclosed span")
 do
   -- Typing `|` after the second branch keeps the first separator intact.
   local plan = alt.plan_separator("%{a | b}", 7)
@@ -103,13 +86,13 @@ end
 
 alt.setup({})
 
--- `%{` auto-pairs to `%{}` with the cursor between the braces.
+-- `%{` stays literal; SASE does not own brace pairing.
 do
   local buf = make_buffer("sase", tmp .. "_e1.sase")
   set_line(buf, "", 1, 0)
   type_in(buf, "i%{")
-  same(vim.api.nvim_get_current_line(), "%{}", "e2e auto-pair text")
-  same(vim.api.nvim_win_get_cursor(0), { 1, 2 }, "e2e auto-pair cursor between braces")
+  same(vim.api.nvim_get_current_line(), "%{", "e2e literal brace text")
+  same(vim.api.nvim_win_get_cursor(0), { 1, 1 }, "e2e literal brace cursor uses native insert position")
 end
 
 -- Typing `|` inside `%{foo}` yields `%{foo | }` with the cursor before `}`.
@@ -130,23 +113,23 @@ do
   same(vim.api.nvim_win_get_cursor(0), { 1, 22 }, "e2e acceptance cursor")
 end
 
--- Backspacing the `{` of an empty `%{}` removes the paired `}`.
+-- Backspacing the `{` of an empty `%{}` removes only the `{`.
 do
   local buf = make_buffer("sase", tmp .. "_e4.sase")
   set_line(buf, "%{}", 1, 2)
   type_in(buf, "i<BS>")
-  same(vim.api.nvim_get_current_line(), "%", "e2e paired backspace text")
+  same(vim.api.nvim_get_current_line(), "%}", "e2e backspace keeps closing brace")
 end
 
--- Delete-right on the `{` of an empty `%{}` removes the paired `}`.
+-- Delete-right on the `{` of an empty `%{}` removes only the `{`.
 do
   local buf = make_buffer("sase", tmp .. "_e5.sase")
   set_line(buf, "%{}", 1, 1)
   type_in(buf, "i<Del>")
-  same(vim.api.nvim_get_current_line(), "%", "e2e paired delete text")
+  same(vim.api.nvim_get_current_line(), "%}", "e2e delete keeps closing brace")
 end
 
--- A non-empty `%{x}` is not paired-deleted; backspace removes only `{`.
+-- Backspace in a non-empty `%{x}` also removes only `{`.
 do
   local buf = make_buffer("sase", tmp .. "_e6.sase")
   set_line(buf, "%{x}", 1, 2)
@@ -177,7 +160,7 @@ do
   local buf = make_buffer("markdown", tmp .. "_e9_notes.md")
   set_line(buf, "", 1, 0)
   type_in(buf, "i%{")
-  same(vim.api.nvim_get_current_line(), "%{", "e2e ineligible buffer: no auto-pair")
+  same(vim.api.nvim_get_current_line(), "%{", "e2e ineligible buffer: literal brace")
 end
 do
   local buf = make_buffer("markdown", tmp .. "_e10_notes.md")
@@ -186,13 +169,13 @@ do
   same(vim.api.nvim_get_current_line(), "%{foo|}", "e2e ineligible buffer: literal pipe")
 end
 
--- With allow_all_markdown, ordinary markdown becomes eligible and pairs.
+-- With allow_all_markdown, ordinary markdown becomes eligible for separator editing.
 alt.setup({ allow_all_markdown = true })
 do
   local buf = make_buffer("markdown", tmp .. "_e11_notes.md")
-  set_line(buf, "", 1, 0)
-  type_in(buf, "i%{")
-  same(vim.api.nvim_get_current_line(), "%{}", "e2e allow_all_markdown enables pairing")
+  set_line(buf, "%{foo}", 1, 5)
+  type_in(buf, "i|")
+  same(vim.api.nvim_get_current_line(), "%{foo | }", "e2e allow_all_markdown enables separator editing")
 end
 
 if failures > 0 then

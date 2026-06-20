@@ -4,19 +4,14 @@
 -- `src/sase/ace/tui/widgets/_alt_syntax_editing.py` so Neovim and the TUI
 -- behave identically while typing an alt directive:
 --
---   * typing `{` right after a directive `%` inserts `{}` and puts the cursor
---     between the braces;
---   * backspacing the `{` of an empty `%{}` (or delete-right on it) removes the
---     paired `}` as well;
 --   * typing `|` inside a live `%{...}` span normalizes the current branch's
 --     comma spacing and appends a padded ` | ` separator, keeping the cursor
 --     after the trailing space and before the closing `}`.
 --
 -- All planners are pure, line-based, depth- and backtick-aware string scans, so
--- they are cheap and unit-testable. The `{`/`|` behaviors are driven from
--- `InsertCharPre`; paired deletion is wired through buffer-local insert-mode
--- `<BS>`/`<Del>` maps. Everything attaches only to the same prompt-oriented
--- buffers that `sase.lsp` supports, honoring `allow_all_markdown`.
+-- they are cheap and unit-testable. The `|` behavior is driven from
+-- `InsertCharPre`. Everything attaches only to the same prompt-oriented buffers
+-- that `sase.lsp` supports, honoring `allow_all_markdown`.
 
 local M = {}
 
@@ -178,54 +173,6 @@ local function normalize_branch_text(branch)
   return table.concat(parts, ", ")
 end
 
---- Plan inserting `{}` when `{` is typed right after a directive `%`.
---- The cursor must sit directly after a directive-valid `%`, and the next
---- character (if any) must be whitespace, so the inserted `}` does not run into
---- following text. The planned cursor lands between the braces.
---- @return { start: integer, stop: integer, text: string, cursor: integer }|nil
-function M.plan_auto_pair(line, offset)
-  if offset <= 0 or offset > #line then
-    return nil
-  end
-  if not is_directive_valid_brace_opening(line, offset - 1) then
-    return nil
-  end
-  if offset < #line and line:sub(offset + 1, offset + 1):match("%s") == nil then
-    return nil
-  end
-  return { start = offset, stop = offset, text = "{}", cursor = offset + 1 }
-end
-
---- Plan deleting both braces when backspacing the `{` of an empty `%{}`.
---- @return { start: integer, stop: integer, text: string, cursor: integer }|nil
-function M.plan_paired_delete_left(line, offset)
-  if offset <= 1 or offset >= #line then
-    return nil
-  end
-  if line:sub(offset, offset) ~= "{" or line:sub(offset + 1, offset + 1) ~= "}" then
-    return nil
-  end
-  if not is_directive_valid_brace_opening(line, offset - 2) then
-    return nil
-  end
-  return { start = offset - 1, stop = offset + 1, text = "", cursor = offset - 1 }
-end
-
---- Plan deleting both braces when delete-right removes the `{` of an empty `%{}`.
---- @return { start: integer, stop: integer, text: string, cursor: integer }|nil
-function M.plan_paired_delete_right(line, offset)
-  if offset < 1 or offset + 1 >= #line then
-    return nil
-  end
-  if line:sub(offset + 1, offset + 1) ~= "{" or line:sub(offset + 2, offset + 2) ~= "}" then
-    return nil
-  end
-  if not is_directive_valid_brace_opening(line, offset - 1) then
-    return nil
-  end
-  return { start = offset, stop = offset + 2, text = "", cursor = offset }
-end
-
 --- Plan a normalized `|` separator insertion inside a live `%{...}` span.
 --- Returns nil when `offset` is not inside an active span. Otherwise the
 --- current branch's comma spacing is normalized and a padded ` | ` is appended,
@@ -270,17 +217,12 @@ local function apply_plan(bufnr, row, plan)
   end
 end
 
--- Shared `InsertCharPre` handler for `{` (auto-pair) and `|` (separator). When
--- a plan applies, swallow the typed character and schedule the real edit (the
--- buffer cannot be mutated from within `InsertCharPre` itself).
+-- `InsertCharPre` handler for `|` separator normalization. When a plan applies,
+-- swallow the typed character and schedule the real edit (the buffer cannot be
+-- mutated from within `InsertCharPre` itself).
 local function on_insert_char(bufnr)
   local char = vim.v.char
-  local planner
-  if char == "{" then
-    planner = M.plan_auto_pair
-  elseif char == "|" then
-    planner = M.plan_separator
-  else
+  if char ~= "|" then
     return
   end
 
@@ -288,7 +230,7 @@ local function on_insert_char(bufnr)
   local cursor = vim.api.nvim_win_get_cursor(0)
   local row = cursor[1] - 1
   local offset = cursor[2]
-  local plan = planner(line, offset)
+  local plan = M.plan_separator(line, offset)
   if not plan then
     return
   end
@@ -299,33 +241,12 @@ local function on_insert_char(bufnr)
   end)
 end
 
--- Buffer-local `<BS>`/`<Del>` handler: when removing the `{` of an empty `%{}`,
--- delete the paired `}` too and place the cursor exactly; otherwise fall back to
--- the default key (non-remapped, so it does not re-enter this map).
-local function handle_paired_delete(planner, default_key)
-  local line = vim.api.nvim_get_current_line()
-  local cursor = vim.api.nvim_win_get_cursor(0)
-  local row = cursor[1] - 1
-  local offset = cursor[2]
-  local plan = planner(line, offset)
-  if plan then
-    vim.api.nvim_buf_set_text(0, row, plan.start, row, plan.stop, { plan.text })
-    vim.api.nvim_win_set_cursor(0, { row + 1, plan.cursor })
-    return
-  end
-  vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(default_key, true, false, true), "n", false)
-end
-
 local function detach(bufnr)
   if not attached[bufnr] then
     return
   end
   attached[bufnr] = nil
   pcall(vim.api.nvim_del_augroup_by_name, GROUP .. "Buf" .. bufnr)
-  if vim.api.nvim_buf_is_valid(bufnr) then
-    pcall(vim.keymap.del, "i", "<BS>", { buffer = bufnr })
-    pcall(vim.keymap.del, "i", "<Del>", { buffer = bufnr })
-  end
 end
 
 function M.attach(bufnr)
@@ -357,13 +278,6 @@ function M.attach(bufnr)
       detach(bufnr)
     end,
   })
-
-  vim.keymap.set("i", "<BS>", function()
-    handle_paired_delete(M.plan_paired_delete_left, "<BS>")
-  end, { buffer = bufnr, desc = "sase alt paired backspace" })
-  vim.keymap.set("i", "<Del>", function()
-    handle_paired_delete(M.plan_paired_delete_right, "<Del>")
-  end, { buffer = bufnr, desc = "sase alt paired delete" })
 end
 
 function M.setup(opts)
