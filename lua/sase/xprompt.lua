@@ -142,6 +142,35 @@ local function item_insertion(item)
   return prefix .. item.name
 end
 
+--- Return whether *reference* names a cached xprompt whose inputs are all
+--- optional (an "optional-only" xprompt). Optional-only xprompts complete to
+--- `#name ` with a deliberate trailing spacer, so the optional-spacer handler
+--- may replace that space with a colon. No-input references, references with any
+--- required input, unknown references, and a cold catalog all return false so
+--- the handler does nothing rather than guessing.
+--- @param reference string  full reference text, e.g. "#name" or "#!name"
+--- @return boolean
+local function reference_is_optional_only(reference)
+  if not _cache or type(reference) ~= "string" or reference == "" then
+    return false
+  end
+  for _, item in ipairs(_cache) do
+    if item_insertion(item) == reference then
+      local inputs = item.inputs
+      if type(inputs) ~= "table" or #inputs == 0 then
+        return false
+      end
+      for _, inp in ipairs(inputs) do
+        if inp.required then
+          return false
+        end
+      end
+      return true
+    end
+  end
+  return false
+end
+
 --- @param item SaseXPromptItem
 --- @return boolean
 local function is_standalone(item)
@@ -544,6 +573,15 @@ end
 function M.clear_cache()
   _cache = nil
 end
+
+--- Test seam: replace the cached catalog directly. Production code populates
+--- the cache via `fetch_xprompts`/`M.refresh`.
+--- @param items SaseXPromptItem[]|nil
+function M._set_cache(items)
+  _cache = items
+end
+
+M.reference_is_optional_only = reference_is_optional_only
 
 -- Expose helpers for the Telescope extension.
 M._format_display = format_display
