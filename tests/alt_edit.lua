@@ -28,6 +28,11 @@ same(
   "separator acceptance example"
 )
 same(alt.plan_separator("%{foo", 5), { start = 2, stop = 5, text = "foo | ", cursor = 8 }, "separator unclosed span")
+same(
+  alt.plan_separator("%effort:%{medium}", 16),
+  { start = 10, stop = 16, text = "medium | ", cursor = 19 },
+  "separator after directive colon"
+)
 do
   -- Typing `|` after the second branch keeps the first separator intact.
   local plan = alt.plan_separator("%{a | b}", 7)
@@ -40,6 +45,22 @@ do
 end
 same(alt.plan_separator("plain", 3), nil, "separator outside span returns nil")
 same(alt.plan_separator("a%{foo}", 5), nil, "separator ignores non-directive opener")
+
+-- plan_brace_padding: two spaces after the native `{`, never a closing brace.
+same(alt.plan_brace_padding("%{", 2), { start = 2, stop = 2, text = "  ", cursor = 3 }, "brace padding simple")
+same(
+  alt.plan_brace_padding("%effort:%{", 10),
+  { start = 10, stop = 10, text = "  ", cursor = 11 },
+  "brace padding after directive colon"
+)
+same(
+  alt.plan_brace_padding("%{}", 2),
+  { start = 2, stop = 2, text = "  ", cursor = 3 },
+  "brace padding before external closer"
+)
+same(alt.plan_brace_padding("word{", 5), nil, "brace padding requires percent")
+same(alt.plan_brace_padding("a%{", 3), nil, "brace padding ignores non-directive percent")
+same(alt.plan_brace_padding("%{word", 2), nil, "brace padding rejects unsafe following character")
 
 -- --- supports_buffer: attach eligibility ----------------------------------- #
 
@@ -86,13 +107,13 @@ end
 
 alt.setup({})
 
--- `%{` stays literal; SASE does not own brace pairing.
+-- `%{` gets two spaces only; SASE still does not own the closing brace.
 do
   local buf = make_buffer("sase", tmp .. "_e1.sase")
   set_line(buf, "", 1, 0)
   type_in(buf, "i%{")
-  same(vim.api.nvim_get_current_line(), "%{", "e2e literal brace text")
-  same(vim.api.nvim_win_get_cursor(0), { 1, 1 }, "e2e literal brace cursor uses native insert position")
+  same(vim.api.nvim_get_current_line(), "%{  ", "e2e brace padding text")
+  same(vim.api.nvim_win_get_cursor(0), { 1, 3 }, "e2e brace padding cursor")
 end
 
 -- Typing `|` inside `%{foo}` yields `%{foo | }` with the cursor before `}`.

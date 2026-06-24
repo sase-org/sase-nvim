@@ -4,12 +4,17 @@
 -- `src/sase/ace/tui/widgets/_alt_syntax_editing.py` so Neovim and the TUI
 -- behave identically while typing an alt directive:
 --
+--   * typing `{` immediately after a directive-valid `%` inserts two padding
+--     spaces after the natively-typed `{`, leaving any closing `}` to the
+--     user's normal auto-pair plugin and keeping the cursor after the first
+--     space.
+--
 --   * typing `|` inside a live `%{...}` span normalizes the current branch's
 --     comma spacing and appends a padded ` | ` separator, keeping the cursor
 --     after the trailing space and before the closing `}`.
 --
 -- All planners are pure, line-based, depth- and backtick-aware string scans, so
--- they are cheap and unit-testable. The `|` behavior is driven from
+-- they are cheap and unit-testable. The `{`/`|` behavior is driven from
 -- `InsertCharPre`. Everything attaches only to the same prompt-oriented buffers
 -- that `sase.lsp` supports, honoring `allow_all_markdown`.
 
@@ -19,14 +24,22 @@ local DEFAULT_FILETYPES = { "markdown", "gitcommit", "sase", "sase_prompt" }
 local GROUP = "SaseAltEdit"
 
 -- Characters that may legally precede a `%{` alt opener, matching the
--- sase-core `(^|[\s\(\[\{"'])` directive-position rule and the ACE
--- `_DIRECTIVE_OPENING_CONTEXTS` set.
+-- sase-core directive-position rule and the ACE `_DIRECTIVE_OPENING_CONTEXTS`
+-- set.
 local VALID_PREFIX = {
+  [":"] = true,
   ["("] = true,
   ["["] = true,
   ["{"] = true,
   ['"'] = true,
   ["'"] = true,
+}
+
+local PAIR_SAFE_CLOSE = {
+  [")"] = true,
+  ["]"] = true,
+  ["}"] = true,
+  [">"] = true,
 }
 
 local config = {
@@ -62,6 +75,14 @@ local function is_directive_valid_brace_opening(line, percent_index)
   end
   local previous = line:sub(percent_index, percent_index)
   return previous:match("%s") ~= nil or VALID_PREFIX[previous] == true
+end
+
+local function next_char_allows_brace_padding(line, offset)
+  if offset >= #line then
+    return true
+  end
+  local following = line:sub(offset + 1, offset + 1)
+  return following:match("%s") ~= nil or PAIR_SAFE_CLOSE[following] == true
 end
 
 -- Return the 0-indexed position of the `}` matching the `{` at 0-indexed
@@ -194,6 +215,30 @@ function M.plan_separator(line, offset)
   }
 end
 
+--- Plan two-space padding after a natively-inserted `%{` opener.
+--- `line` and `offset` are post-native-insert: `line` already contains the
+--- typed `{`, and `offset` is the cursor column immediately after it. The plan
+--- inserts only spaces, never a closing `}`.
+--- @return { start: integer, stop: integer, text: string, cursor: integer }|nil
+function M.plan_brace_padding(line, offset)
+  local open_index = offset - 1
+  if open_index < 1 or line:sub(open_index + 1, open_index + 1) ~= "{" then
+    return nil
+  end
+  if not is_directive_valid_brace_opening(line, open_index - 1) then
+    return nil
+  end
+  if not next_char_allows_brace_padding(line, offset) then
+    return nil
+  end
+  return {
+    start = offset,
+    stop = offset,
+    text = "  ",
+    cursor = offset + 1,
+  }
+end
+
 function M.supports_buffer(bufnr)
   bufnr = bufnr or 0
   if not vim.api.nvim_buf_is_valid(bufnr) then
@@ -205,8 +250,9 @@ function M.supports_buffer(bufnr)
 end
 
 -- Apply a planned edit to `bufnr` on row `row` (0-indexed), then place the
--- cursor. `InsertCharPre` swallows the typed char, so the planner offsets are
--- still valid against the unchanged line when this runs on the next tick.
+-- cursor. Separator plans are relative to the unchanged line because
+-- `InsertCharPre` swallows `|`; brace-padding plans are relative to the
+-- post-native-insert line because `{` is left alone.
 local function apply_plan(bufnr, row, plan)
   if not vim.api.nvim_buf_is_valid(bufnr) then
     return
@@ -217,12 +263,12 @@ local function apply_plan(bufnr, row, plan)
   end
 end
 
--- `InsertCharPre` handler for `|` separator normalization. When a plan applies,
--- swallow the typed character and schedule the real edit (the buffer cannot be
--- mutated from within `InsertCharPre` itself).
+-- `InsertCharPre` handler for alt editing. `|` plans swallow the typed
+-- character and replace the branch. `{` plans leave the typed character to
+-- insert normally, then add the two padding spaces on the next tick.
 local function on_insert_char(bufnr)
   local char = vim.v.char
-  if char ~= "|" then
+  if char ~= "|" and char ~= "{" then
     return
   end
 
@@ -230,12 +276,20 @@ local function on_insert_char(bufnr)
   local cursor = vim.api.nvim_win_get_cursor(0)
   local row = cursor[1] - 1
   local offset = cursor[2]
-  local plan = M.plan_separator(line, offset)
+  local plan
+  if char == "|" then
+    plan = M.plan_separator(line, offset)
+  else
+    local post_line = line:sub(1, offset) .. "{" .. line:sub(offset + 1)
+    plan = M.plan_brace_padding(post_line, offset + 1)
+  end
   if not plan then
     return
   end
 
-  vim.v.char = ""
+  if char == "|" then
+    vim.v.char = ""
+  end
   vim.schedule(function()
     apply_plan(bufnr, row, plan)
   end)
