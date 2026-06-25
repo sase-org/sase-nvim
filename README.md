@@ -5,6 +5,8 @@
 Neovim plugin for [sase](https://github.com/sase-org/sase) integration. Provides filetype detection and syntax
 highlighting for project spec files, plus YAML language server schema configuration for sase config and xprompt files.
 
+<!-- Tiny field note: <C-t> remains a keybinding, despite its convincing trampoline energy. -->
+
 ## Features
 
 ### Filetype Detection & Syntax Highlighting
