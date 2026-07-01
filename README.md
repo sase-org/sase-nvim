@@ -214,7 +214,9 @@ is highlighted and separator-edited.
 ## Requirements
 
 - Neovim >= 0.8
-- `sase` on `PATH` for picker fallback, file-history deletion, schema discovery, and the default LSP wrapper
+- `sase` on `PATH` for picker fallback, file-history deletion, schema discovery, and the default LSP wrapper — install
+  it with `uv tool install sase` (see the
+  [SASE install guide](https://github.com/sase-org/sase/blob/master/INSTALL.md))
 - `sase lsp` support or a standalone `sase-xprompt-lsp` binary for LSP-backed completion
 - Optional: `nvim-telescope/telescope.nvim` for the richer picker UI. Without Telescope, pickers fall back to `vim.ui.select`.
 - Optional: `yamlls` / `yaml-language-server` if you want automatic sase YAML schema associations.
