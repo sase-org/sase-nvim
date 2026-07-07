@@ -1,13 +1,7 @@
--- Headless smoke test for the `#+` VCS project completion served by the xprompt
--- LSP. Confirms Neovim auto-picks up the `+` trigger character from the server
--- capabilities and that the canonical expansion (including replacing an existing
--- leading VCS tag) applies correctly in a real buffer.
---
--- Neovim's native `vim.lsp.completion` applies the selected item's primary
--- `textEdit` (as the inserted word) plus its `additionalTextEdits` on
--- `CompleteDone`. This test exercises the same edits through
--- `vim.lsp.util.apply_text_edits`, so a green run means a confirmed `#+`
--- completion rewrites the buffer exactly like the TUI.
+-- Headless smoke test for VCS repository completion inside registered workflow
+-- refs such as `#gh:owner/`. The xprompt LSP gets candidate rows from the
+-- editor helper bridge, then Neovim applies the returned text edit in the live
+-- buffer.
 
 local repo_dir = vim.fn.getcwd()
 package.path = repo_dir .. "/lua/?.lua;" .. repo_dir .. "/lua/?/init.lua;" .. package.path
@@ -58,18 +52,6 @@ local function wait_for_client(client_id)
   end
 end
 
-local function assert_plus_trigger(client_id)
-  local client = vim.lsp.get_client_by_id(client_id)
-  local completion = client and client.server_capabilities and client.server_capabilities.completionProvider
-  local triggers = completion and completion.triggerCharacters or {}
-  for _, ch in ipairs(triggers) do
-    if ch == "+" then
-      return
-    end
-  end
-  fail("`+` is not advertised as a completion trigger character: " .. vim.inspect(triggers))
-end
-
 local function completion_items(line, character)
   vim.api.nvim_buf_set_lines(0, 0, -1, false, { line })
   vim.api.nvim_win_set_cursor(0, { 1, character })
@@ -112,38 +94,37 @@ local function find_item(items, label)
   return nil
 end
 
---- Drive a `#+` completion for a single-line prompt, then apply the accepted
---- item's edits to the live buffer exactly as native completion does on
---- `CompleteDone` (primary `textEdit` plus `additionalTextEdits`), and assert
---- the buffer matches the canonical expansion. Using the real attached buffer
---- keeps the test faithful to the document the server actually saw, including
---- Neovim's normal trailing line ending.
-local function assert_expansion(line, expected)
-  local character = #line
-  local items = completion_items(line, character)
-  local item = find_item(items, "sase")
-  if not item then
-    fail("missing `sase` completion item for line '" .. line .. "': " .. vim.inspect(items))
+local function apply_item(line, item)
+  if not item.textEdit then
+    fail("missing textEdit for " .. item.label)
   end
-  if item.filterText ~= "#+sase" then
-    fail("filterText mismatch for '" .. line .. "': " .. vim.inspect(item.filterText))
-  end
-  local detail = item.detail or ""
-  if not detail:find("#gh:sase", 1, true) then
-    fail("detail mismatch for '" .. line .. "': " .. vim.inspect(item.detail))
-  end
-
-  local edits = {}
-  if item.textEdit then
-    table.insert(edits, { range = item.textEdit.range, newText = item.textEdit.newText })
-  end
+  local edits = { { range = item.textEdit.range, newText = item.textEdit.newText } }
   for _, edit in ipairs(item.additionalTextEdits or {}) do
     table.insert(edits, edit)
   end
   local bufnr = vim.api.nvim_get_current_buf()
   vim.lsp.util.apply_text_edits(edits, bufnr, "utf-16")
+  return table.concat(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false), "\n")
+end
 
-  local applied = table.concat(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false), "\n")
+local function assert_request(path)
+  local lines = vim.fn.readfile(path)
+  local request = vim.json.decode(table.concat(lines, "\n"))
+  if request.schema_version ~= 1 or request.workflow ~= "gh" or request.namespace ~= "bbugyi200" then
+    fail("unexpected helper request: " .. vim.inspect(request))
+  end
+end
+
+local function assert_completion(line, item_label, expected, expected_new_text)
+  local items = completion_items(line, #line)
+  local item = find_item(items, item_label)
+  if not item then
+    fail("missing `" .. item_label .. "` completion item for line '" .. line .. "': " .. vim.inspect(items))
+  end
+  if expected_new_text and item.textEdit.newText ~= expected_new_text then
+    fail("newText mismatch for '" .. line .. "': " .. vim.inspect(item.textEdit.newText))
+  end
+  local applied = apply_item(line, item)
   if applied ~= expected then
     fail(
       ("expansion mismatch for '%s'\n  expected: %s\n  actual:   %s"):format(
@@ -158,29 +139,60 @@ end
 local root = vim.fn.tempname()
 vim.fn.mkdir(root .. "/.sase", "p")
 
--- Hand-written catalog mirroring `vcs_project_catalog_payload()` so the test is
--- independent of any real project state. `workflow_names` includes `git` so the
--- replace-existing-tag case is exercised end to end.
 local catalog_path = root .. "/vcs_project_catalog.json"
 vim.fn.writefile({
   vim.json.encode({
-    schema_version = 1,
-    workflow_names = { "gh", "git", "hg" },
-    entries = {
-      {
-        name = "sase",
-        vcs_prefix = "gh",
-        display_tag = "#gh:sase",
-        provider_display = "GitHub",
-        description = "SASE repo",
-        aliases = {},
-      },
-    },
+    schema_version = 2,
+    workflow_names = { "gh" },
+    entries = {},
   }),
 }, catalog_path)
 vim.env.SASE_XPROMPT_VCS_PROJECT_CATALOG = catalog_path
 
-local prompt_path = root .. "/sase_prompt_vcs_project_smoke.md"
+local request_path = root .. "/vcs_repo_request.json"
+local helper_path = root .. "/helper"
+local response = vim.json.encode({
+  schema_version = 1,
+  status = "ok",
+  error_kind = vim.NIL,
+  message = "",
+  provider_display = "GitHub",
+  stale = false,
+  entries = {
+    {
+      name = "tooling",
+      ref = "bbugyi200/tooling",
+      description = "Tooling repo",
+      visibility = "public",
+      is_fork = false,
+      is_archived = false,
+      pushed_at = "2026-07-07T18:30:00Z",
+    },
+    {
+      name = "sase",
+      ref = "bbugyi200/sase",
+      description = "Structured Agentic Software Engineering",
+      visibility = "private",
+      is_fork = false,
+      is_archived = false,
+      pushed_at = "2026-07-07T18:00:00Z",
+    },
+  },
+})
+vim.fn.writefile({
+  "#!/bin/sh",
+  'if [ "$1" != "editor" ] || [ "$2" != "helper-bridge" ] || [ "$3" != "vcs-repo-catalog" ]; then',
+  "  exit 7",
+  "fi",
+  "cat > " .. vim.fn.shellescape(request_path),
+  "cat <<'JSON'",
+  response,
+  "JSON",
+}, helper_path)
+vim.fn.setfperm(helper_path, "rwx------")
+vim.env.SASE_MOBILE_HELPER_BRIDGE_COMMAND = helper_path
+
+local prompt_path = root .. "/sase_prompt_vcs_repo_smoke.md"
 vim.fn.writefile({ "" }, prompt_path)
 
 vim.cmd("cd " .. vim.fn.fnameescape(root))
@@ -199,20 +211,10 @@ if not client_id then
 end
 wait_for_client(client_id)
 
-assert_plus_trigger(client_id)
+assert_completion("#gh:bbugyi200/sa", "sase", "#gh:bbugyi200/sase ", "bbugyi200/sase ")
+assert_request(request_path)
 
--- Realistic end-of-line `#+` triggers from the plan's parity table (selected
--- project `sase`). The exhaustive golden table is unit-tested in the Python
--- (Phase 1) and Rust (Phase 3) suites; here we confirm the integration applies
--- the same expansion in a live Neovim buffer.
--- Start-of-line trigger on an otherwise-empty first line must not insert a
--- blank line above the expanded VCS tag.
-assert_expansion("#+s", "#gh:sase ")
-assert_expansion("Describe this repo. #+", "#gh:sase Describe this repo.")
--- Replace-existing: a leading VCS tag is swapped, never stacked.
-assert_expansion("#git:foo Fix bug #+", "#gh:sase Fix bug")
--- Replace-existing with a HITL suffix on the old tag (the suffix is dropped).
-assert_expansion("#gh!!:foo do X #+", "#gh:sase do X")
+assert_completion("#gh(bbugyi200/sa", "sase", "#gh(bbugyi200/sase)", "bbugyi200/sase)")
 
 local client = vim.lsp.get_client_by_id(client_id)
 if client and client.stop then
@@ -221,4 +223,4 @@ else
   vim.lsp.stop_client(client_id, true)
 end
 
-print("lsp_vcs_project_smoke: OK")
+print("lsp_vcs_repo_smoke: OK")

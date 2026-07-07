@@ -32,6 +32,7 @@ dispatcher when the server command is unavailable or disabled:
 | `/skill` / `/partial` (slash skill)          | LSP completion, or skill-filtered picker |
 | `%directive`                                 | LSP directive completion                |
 | `#+` / `#+project` (VCS project trigger)     | LSP VCS project completion (expands to `#gh:sase …`) |
+| `#gh:owner/` / `#gh(owner/` (VCS repo ref)   | LSP VCS repository completion           |
 | bare snippet trigger prefix (`foo`)          | LSP SASE snippet completion             |
 | path-like token (`~/foo`, `./bar`, `a/b.c`…) | LSP file completion, or file picker     |
 | empty / no token                             | LSP recent-file completion, or recent files picker |
@@ -142,6 +143,12 @@ and `nvim-cmp` picks it up the same way through `cmp_nvim_lsp.default_capabiliti
 required. The completion catalog is materialized by `sase` at LSP launch and re-read per request, so newly created or
 archived projects appear after the catalog is rewritten.
 
+Repository-name completion is available inside registered VCS workflow refs after the namespace slash. Typing a ref
+such as `#gh:bbugyi200/` or `#gh(bbugyi200/` asks the owning workspace provider for repositories in that namespace.
+Accepting a row replaces only the ref value, preserving the workflow prefix and HITL suffix; colon refs receive a
+trailing space (`#gh:bbugyi200/sase `), while parenthesized refs receive a closing parenthesis
+(`#gh(bbugyi200/sase)`).
+
 Manual smoke check (snippets):
 
 1. Add a local `sase.yml` with an `ace.snippets` entry and an xprompt with `snippet: true`.
@@ -155,6 +162,16 @@ Manual smoke check (`#+` VCS project completion):
 3. Accept a project and verify the prompt becomes `#gh:<project> Describe this repo.` with any prior VCS tag replaced.
 
 The headless equivalent of this check lives in `tests/lsp_vcs_project_smoke.lua`.
+
+Manual smoke check (`#gh:owner/` VCS repository completion):
+
+1. From an active SASE project with the relevant workspace-provider plugin installed, open an eligible prompt buffer.
+2. Type a registered workflow ref and namespace slash, such as `#gh:bbugyi200/`; filter by continuing the repository
+   name.
+3. Accept a repository and verify only the ref value changes, such as `#gh:bbugyi200/sase ` or
+   `#gh(bbugyi200/sase)`.
+
+The headless equivalent of this check lives in `tests/lsp_vcs_repo_smoke.lua`.
 
 For troubleshooting, check Neovim's LSP log (`:lua print(vim.lsp.get_log_path())`) and verify the server command with
 `sase lsp --version` or `sase-xprompt-lsp --version`.
