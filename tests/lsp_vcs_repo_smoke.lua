@@ -52,6 +52,18 @@ local function wait_for_client(client_id)
   end
 end
 
+local function assert_slash_trigger(client_id)
+  local client = vim.lsp.get_client_by_id(client_id)
+  local completion = client and client.server_capabilities and client.server_capabilities.completionProvider
+  local triggers = completion and completion.triggerCharacters or {}
+  for _, ch in ipairs(triggers) do
+    if ch == "/" then
+      return
+    end
+  end
+  fail("`/` is not advertised as a completion trigger character: " .. vim.inspect(triggers))
+end
+
 local function completion_items(line, character)
   vim.api.nvim_buf_set_lines(0, 0, -1, false, { line })
   vim.api.nvim_win_set_cursor(0, { 1, character })
@@ -210,6 +222,7 @@ if not client_id then
   fail("xprompt LSP did not start")
 end
 wait_for_client(client_id)
+assert_slash_trigger(client_id)
 
 assert_completion("#gh:bbugyi200/sa", "sase", "#gh:bbugyi200/sase ", "bbugyi200/sase ")
 assert_request(request_path)
