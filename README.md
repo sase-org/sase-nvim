@@ -9,9 +9,8 @@ highlighting for project spec files, plus YAML language server schema configurat
 
 ### Filetype Detection & Syntax Highlighting
 
-Automatic detection and syntax highlighting for project spec files
-(`~/.sase/projects/<project>/<project>.sase`; legacy `.gp` files are also
-detected) with colors matching the `sase ace` TUI:
+Automatic detection and syntax highlighting for project spec files (`~/.sase/projects/<project>/<project>.sase`; legacy
+`.gp` files are also detected) with colors matching the `sase ace` TUI:
 
 - Field labels (`NAME:`, `STATUS:`, `HOOKS:`, `RUNNING:`, `WORKSPACE_DIR:`, etc.)
 - Status values with distinct colors (WIP, Draft, Ready, Mailed, Submitted, Reverted, Archived)
@@ -26,16 +25,17 @@ detected) with colors matching the `sase ace` TUI:
 Insert-mode `<C-t>` asks the SASE xprompt LSP for completion when available, then falls back to the legacy picker
 dispatcher when the server command is unavailable or disabled:
 
-| Cursor on…                                   | Opens…                                 |
-| -------------------------------------------- | -------------------------------------- |
-| `#token` / `#!token` (xprompt reference)     | LSP completion, or legacy xprompt picker |
-| `/skill` / `/partial` (slash skill)          | LSP completion, or skill-filtered picker |
-| `%directive`                                 | LSP directive completion                |
-| `#+` / `#+project` (VCS project trigger)     | LSP VCS project completion (expands to `#gh:sase …`) |
-| `#gh:owner/` / `#gh(owner/` (VCS repo ref)   | LSP VCS repository completion           |
-| bare snippet trigger prefix (`foo`)          | LSP SASE snippet completion             |
-| path-like token (`~/foo`, `./bar`, `a/b.c`…) | LSP file completion, or file picker     |
-| empty / no token                             | LSP recent-file completion, or recent files picker |
+| Cursor on…                                   | Opens…                                                   |
+| -------------------------------------------- | -------------------------------------------------------- |
+| `#token` / `#!token` (xprompt reference)     | LSP completion, or legacy xprompt picker                 |
+| `/skill` / `/partial` (slash skill)          | LSP completion, or skill-filtered picker                 |
+| `%directive`                                 | LSP directive completion                                 |
+| `#+` / `#+project` (VCS project trigger)     | LSP VCS project completion (expands to `#gh:sase …`)     |
+| `#gh:` / `#git:` (VCS ref root)              | LSP VCS ref completion for projects, PRs, and namespaces |
+| `#gh:owner/` / `#gh(owner/` (VCS repo ref)   | LSP VCS repository completion                            |
+| bare snippet trigger prefix (`foo`)          | LSP SASE snippet completion                              |
+| path-like token (`~/foo`, `./bar`, `a/b.c`…) | LSP file completion, or file picker                      |
+| empty / no token                             | LSP recent-file completion, or recent files picker       |
 
 The keymap is **opt-in** — add this to your config to enable it:
 
@@ -54,36 +54,31 @@ require("sase").setup({
 })
 ```
 
-`completion_backend = "auto"` is the default. It uses the LSP when `sase lsp --version` succeeds or
-`sase-xprompt-lsp` is executable, and otherwise keeps the existing picker behavior. Set
-`completion_backend = "legacy"` or `lsp.enabled = false` to keep the old picker-only path.
-`lsp.native_completion = "auto"` enables Neovim's native `vim.lsp.completion` frontend unless `nvim-cmp` /
-`cmp_nvim_lsp` is detected. Set it to `false` when `nvim-cmp` should own LSP completion and snippet expansion.
+`completion_backend = "auto"` is the default. It uses the LSP when `sase lsp --version` succeeds or `sase-xprompt-lsp`
+is executable, and otherwise keeps the existing picker behavior. Set `completion_backend = "legacy"` or
+`lsp.enabled = false` to keep the old picker-only path. `lsp.native_completion = "auto"` enables Neovim's native
+`vim.lsp.completion` frontend unless `nvim-cmp` / `cmp_nvim_lsp` is detected. Set it to `false` when `nvim-cmp` should
+own LSP completion and snippet expansion.
 
-The legacy xprompt picker uses `sase xprompt list` insertion metadata. Inline xprompts
-and embeddable workflows insert as `#name`; standalone workflows insert as
-`#!name`. Typing `#!` before `<C-t>` filters the picker to standalone workflows.
-Typing `/` or `/partial` before `<C-t>` filters the picker to entries where
-`sase xprompt list` reports `is_skill = true`, and inserts the selected skill as
-`/name`. When `sase xprompt list` includes descriptions, fallback picker rows show
-the xprompt description, local picker filtering matches xprompt and input
-descriptions, and Telescope previews include described inputs above the existing
-content preview.
+The legacy xprompt picker uses `sase xprompt list` insertion metadata. Inline xprompts and embeddable workflows insert
+as `#name`; standalone workflows insert as `#!name`. Typing `#!` before `<C-t>` filters the picker to standalone
+workflows. Typing `/` or `/partial` before `<C-t>` filters the picker to entries where `sase xprompt list` reports
+`is_skill = true`, and inserts the selected skill as `/name`. When `sase xprompt list` includes descriptions, fallback
+picker rows show the xprompt description, local picker filtering matches xprompt and input descriptions, and Telescope
+previews include described inputs above the existing content preview.
 
-In the recent-files picker, `<C-l>` (or `<Enter>`) inserts the highlighted path and `<C-d>`
-removes the highlighted entry from `~/.sase/file_reference_history.json` and refreshes the
-picker in place. Run `:SaseFileHistoryRefresh` to drop the cached list so the next `<C-t>`
-re-fetches from `sase file-history list`.
+In the recent-files picker, `<C-l>` (or `<Enter>`) inserts the highlighted path and `<C-d>` removes the highlighted
+entry from `~/.sase/file_reference_history.json` and refreshes the picker in place. Run `:SaseFileHistoryRefresh` to
+drop the cached list so the next `<C-t>` re-fetches from `sase file-history list`.
 
 In the fallback file-system picker, candidates come from `sase file list --path <cwd> --token <token>`. Selecting a file
 inserts the full path; selecting a directory drills down and re-opens the picker rooted at the chosen directory.
 
 ### XPrompt Picker
 
-Typing `#@` opens the xprompt picker in insert mode. Picker entries show the
-same reference text that will be inserted, so standalone workflows appear as
-`#!sync` while inline-capable prompts and workflows appear as `#commit`. Closing
-the picker without a selection restores the original single `#`.
+Typing `#@` opens the xprompt picker in insert mode. Picker entries show the same reference text that will be inserted,
+so standalone workflows appear as `#!sync` while inline-capable prompts and workflows appear as `#commit`. Closing the
+picker without a selection restores the original single `#`.
 
 ### YAML Language Server Schemas
 
@@ -98,8 +93,8 @@ Schema paths are resolved asynchronously via `sase path` to avoid blocking Neovi
 ### XPrompt LSP
 
 The plugin can start the SASE xprompt language server for git commit, `sase`, `sase_prompt`, and prompt-oriented
-Markdown buffers. Plain Markdown prose files are skipped by default. Markdown buffers are eligible when they are under an
-`xprompts/` or `.xprompts/` directory, or when their filename matches SASE prompt editor temporary files such as
+Markdown buffers. Plain Markdown prose files are skipped by default. Markdown buffers are eligible when they are under
+an `xprompts/` or `.xprompts/` directory, or when their filename matches SASE prompt editor temporary files such as
 `sase_ace_prompt_*.md` or `sase_prompt_*.md`. LSP-backed completion is the normal path after `setup()`:
 
 ```lua
@@ -117,14 +112,14 @@ require("sase").setup({
 })
 ```
 
-Command resolution prefers `lsp.cmd`, then `SASE_XPROMPT_LSP_CMD`, then a verified `sase lsp`, then
-`sase-xprompt-lsp`. Set `lsp.allow_all_markdown = true` only if you want the legacy behavior where every Markdown buffer
-can attach to the xprompt LSP. The LSP client uses `.sase` or `.git` as the project root when available. The `#@` trigger and
+Command resolution prefers `lsp.cmd`, then `SASE_XPROMPT_LSP_CMD`, then a verified `sase lsp`, then `sase-xprompt-lsp`.
+Set `lsp.allow_all_markdown = true` only if you want the legacy behavior where every Markdown buffer can attach to the
+xprompt LSP. The LSP client uses `.sase` or `.git` as the project root when available. The `#@` trigger and
 `:SaseXPrompts` picker commands remain picker-based browse surfaces. They keep using `sase xprompt list` until the LSP
 exposes a browse/catalog request, and file-history deletion keeps using `sase file-history delete`.
 
-When the LSP is attached, normal Neovim go-to-definition works for disk-backed xprompt references. Use your existing
-LSP mapping, such as `gd`, or call `vim.lsp.buf.definition()` on `#foo`, `#!workflow`, namespaced references like
+When the LSP is attached, normal Neovim go-to-definition works for disk-backed xprompt references. Use your existing LSP
+mapping, such as `gd`, or call `vim.lsp.buf.definition()` on `#foo`, `#!workflow`, namespaced references like
 `#gh__review`, or slash skills like `/sase_plan`. The plugin does not parse source paths in Lua; it relies on the
 server's standard `textDocument/definition` response.
 
@@ -143,11 +138,16 @@ and `nvim-cmp` picks it up the same way through `cmp_nvim_lsp.default_capabiliti
 required. The completion catalog is materialized by `sase` at LSP launch and re-read per request, so newly created or
 archived projects appear after the catalog is rewritten.
 
-Repository-name completion is available inside registered VCS workflow refs after the namespace slash. Typing a ref
-such as `#gh:bbugyi200/` or `#gh(bbugyi200/` asks the owning workspace provider for repositories in that namespace.
-Accepting a row replaces only the ref value, preserving the workflow prefix and HITL suffix; colon refs receive a
-trailing space (`#gh:bbugyi200/sase `), while parenthesized refs receive a closing parenthesis
-(`#gh(bbugyi200/sase)`).
+Root ref completion is available inside registered VCS workflow refs before the namespace slash. Typing `:` or `(` after
+a workflow tag, such as `#gh:` or `#git(`, opens project and PR-sized ChangeSpec rows for that provider. Providers can
+also add local namespace rows; accepting a namespace inserts a trailing slash such as `#gh:sase-org/` and asks the
+editor to trigger completion again so repository completion can take over. Accepting a project or ChangeSpec completes
+the current ref token, for example `#gh:sase ` or `#gh(sase)`.
+
+Repository-name completion is available inside registered VCS workflow refs after the namespace slash. Typing a ref such
+as `#gh:bbugyi200/` or `#gh(bbugyi200/` asks the owning workspace provider for repositories in that namespace. Accepting
+a row replaces only the ref value, preserving the workflow prefix and HITL suffix; colon refs receive a trailing space
+(`#gh:bbugyi200/sase `), while parenthesized refs receive a closing parenthesis (`#gh(bbugyi200/sase)`).
 
 Manual smoke check (snippets):
 
@@ -163,13 +163,22 @@ Manual smoke check (`#+` VCS project completion):
 
 The headless equivalent of this check lives in `tests/lsp_vcs_project_smoke.lua`.
 
+Manual smoke check (`#gh:` VCS ref-root completion):
+
+1. From an active SASE project with the relevant workspace-provider plugin installed, open an eligible prompt buffer.
+2. Type a registered workflow ref root, such as `#gh:` or `#git:`, and verify projects and active PR-sized ChangeSpecs
+   appear. For GitHub, namespace rows such as `sase-org/` may also appear.
+3. Accept a project and verify the ref becomes `#gh:sase ` or `#gh(sase)`. Accept a namespace and verify it becomes
+   `#gh:sase-org/` without closing the prompt token, ready for repository completion.
+
+The headless equivalent of this check lives in `tests/lsp_vcs_ref_smoke.lua`.
+
 Manual smoke check (`#gh:owner/` VCS repository completion):
 
 1. From an active SASE project with the relevant workspace-provider plugin installed, open an eligible prompt buffer.
 2. Type a registered workflow ref and namespace slash, such as `#gh:bbugyi200/`; filter by continuing the repository
    name.
-3. Accept a repository and verify only the ref value changes, such as `#gh:bbugyi200/sase ` or
-   `#gh(bbugyi200/sase)`.
+3. Accept a repository and verify only the ref value changes, such as `#gh:bbugyi200/sase ` or `#gh(bbugyi200/sase)`.
 
 The headless equivalent of this check lives in `tests/lsp_vcs_repo_smoke.lua`.
 
@@ -186,12 +195,12 @@ features are on by default after `setup()` and inherit the LSP filetype and `all
 **Highlighting** marks each part of a fan-out with its own highlight group, so delimiters read differently from branch
 separators:
 
-| Highlight group     | Spans                                       | Default link |
-| ------------------- | ------------------------------------------- | ------------ |
-| `SaseAltDelimiter`  | `%{` openers and `}` closers                | `Delimiter`  |
-| `SaseAltSeparator`  | top-level `\|` branch separators            | `Operator`   |
-| `SaseAltBranchName` | `name=` named-branch prefixes               | `Identifier` |
-| `SaseAltError`      | unmatched `%{` openers                      | `Error`      |
+| Highlight group     | Spans                            | Default link |
+| ------------------- | -------------------------------- | ------------ |
+| `SaseAltDelimiter`  | `%{` openers and `}` closers     | `Delimiter`  |
+| `SaseAltSeparator`  | top-level `\|` branch separators | `Operator`   |
+| `SaseAltBranchName` | `name=` named-branch prefixes    | `Identifier` |
+| `SaseAltError`      | unmatched `%{` openers           | `Error`      |
 
 Override the look by linking or defining those groups in your colorscheme (e.g.
 `vim.api.nvim_set_hl(0, "SaseAltDelimiter", { link = "Special" })`).
@@ -232,10 +241,10 @@ is highlighted and separator-edited.
 
 - Neovim >= 0.8
 - `sase` on `PATH` for picker fallback, file-history deletion, schema discovery, and the default LSP wrapper — install
-  it with `uv tool install sase` (see the
-  [SASE install guide](https://github.com/sase-org/sase/blob/master/INSTALL.md))
+  it with `uv tool install sase` (see the [SASE install guide](https://github.com/sase-org/sase/blob/master/INSTALL.md))
 - `sase lsp` support or a standalone `sase-xprompt-lsp` binary for LSP-backed completion
-- Optional: `nvim-telescope/telescope.nvim` for the richer picker UI. Without Telescope, pickers fall back to `vim.ui.select`.
+- Optional: `nvim-telescope/telescope.nvim` for the richer picker UI. Without Telescope, pickers fall back to
+  `vim.ui.select`.
 - Optional: `yamlls` / `yaml-language-server` if you want automatic sase YAML schema associations.
 
 ## Installation
@@ -310,11 +319,11 @@ require("sase").setup({
 
 ## Commands
 
-| Command                    | Description                                      |
-| -------------------------- | ------------------------------------------------ |
-| `:SaseXPrompts`            | Open the xprompt picker manually                 |
-| `:SaseXPromptsRefresh`     | Refresh the cached `sase xprompt list` results   |
-| `:SaseFileHistoryRefresh`  | Refresh the cached `sase file-history list` data |
+| Command                   | Description                                      |
+| ------------------------- | ------------------------------------------------ |
+| `:SaseXPrompts`           | Open the xprompt picker manually                 |
+| `:SaseXPromptsRefresh`    | Refresh the cached `sase xprompt list` results   |
+| `:SaseFileHistoryRefresh` | Refresh the cached `sase file-history list` data |
 
 ## Project Structure
 
