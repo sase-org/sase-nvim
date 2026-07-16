@@ -7,7 +7,7 @@
     "insertion": "#review",
     "is_skill": false,
     "description": "Review a diff and identify follow-up work.",
-    "source": "/tmp/.xprompts/review.md",
+    "source": "/tmp/sase/xprompts/review.md",
     "inputs": [
       {
         "name": "diff",

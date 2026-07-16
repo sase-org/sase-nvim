@@ -85,8 +85,10 @@ picker without a selection restores the original single `#`.
 
 Automatically configures `yamlls` with schema associations for sase YAML files:
 
-- **Config schema** — Applied to `sase.yml`, `sase_*.yml`, and `src/sase/default_config.yml` files
-- **XPrompt workflow schema** — Applied to files under `xprompts/` and `.xprompts/` directories
+- **Config schema** — Applied to project `sase/sase.yml`, global `sase_*.yml`, `src/sase/default_config.yml`, and legacy
+  project `sase.yml` files during the compatibility window
+- **XPrompt workflow schema** — Applied to YAML files under canonical `sase/xprompts/` and legacy `xprompts/` or
+  `.xprompts/` directories during the compatibility window
 - **XPrompt collection schema** — Applied to `xprompts.yml` / `xprompts.yaml` files
 
 Schema paths are resolved asynchronously via `sase path` to avoid blocking Neovim startup.
@@ -95,8 +97,9 @@ Schema paths are resolved asynchronously via `sase path` to avoid blocking Neovi
 
 The plugin can start the SASE xprompt language server for git commit, `sase`, `sase_prompt`, and prompt-oriented
 Markdown buffers. Plain Markdown prose files are skipped by default. Markdown buffers are eligible when they are under
-an `xprompts/` or `.xprompts/` directory, or when their filename matches SASE prompt editor temporary files such as
-`sase_ace_prompt_*.md` or `sase_prompt_*.md`. LSP-backed completion is the normal path after `setup()`:
+the canonical `sase/xprompts/` directory, under a legacy `xprompts/` or `.xprompts/` directory during the compatibility
+window, or when their filename matches SASE prompt editor temporary files such as `sase_ace_prompt_*.md` or
+`sase_prompt_*.md`. LSP-backed completion is the normal path after `setup()`:
 
 ```lua
 require("sase").setup({
@@ -164,7 +167,7 @@ a row replaces only the ref value, preserving the workflow prefix and HITL suffi
 
 Manual smoke check (snippets):
 
-1. Add a local `sase.yml` with an `ace.snippets` entry and an xprompt with `snippet: true`.
+1. Add a local `sase/sase.yml` with an `ace.snippets` entry and an xprompt with `snippet: true`.
 2. Open an eligible Markdown or SASE prompt buffer under that project and type the snippet trigger prefix.
 3. Invoke LSP completion, accept the snippet item, and verify Neovim expands the `$1`/`$0` tabstops.
 
@@ -213,8 +216,9 @@ For troubleshooting, check Neovim's LSP log (`:lua print(vim.lsp.get_log_path())
 
 The plugin highlights and helps edit the `%{A | B}` alt fan-out shorthand (sase's preferred spelling for `%alt(A, B)`)
 in the same prompt-oriented buffers the LSP attaches to: `gitcommit`, `sase`, `sase_prompt`, and eligible `markdown`
-buffers (under `xprompts/` / `.xprompts/` or matching SASE prompt temp files), honoring `allow_all_markdown`. Both
-features are on by default after `setup()` and inherit the LSP filetype and `allow_all_markdown` settings.
+buffers (under canonical `sase/xprompts/`, legacy `xprompts/` / `.xprompts/` during the compatibility window, or
+matching SASE prompt temp files), honoring `allow_all_markdown`. Both features are on by default after `setup()` and
+inherit the LSP filetype and `allow_all_markdown` settings.
 
 **Highlighting** marks each part of a fan-out with its own highlight group, so delimiters read differently from branch
 separators:

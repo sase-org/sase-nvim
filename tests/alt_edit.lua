@@ -83,9 +83,9 @@ same(alt.supports_buffer(make_buffer("gitcommit", tmp .. "_COMMIT_EDITMSG")), tr
 same(alt.supports_buffer(make_buffer("lua", tmp .. "_c.lua")), false, "unrelated filetype not eligible")
 same(alt.supports_buffer(make_buffer("markdown", tmp .. "_notes.md")), false, "plain markdown not eligible")
 same(
-  alt.supports_buffer(make_buffer("markdown", "/work/xprompts/" .. vim.fn.fnamemodify(tmp, ":t") .. ".md")),
+  alt.supports_buffer(make_buffer("markdown", "/work/sase/xprompts/" .. vim.fn.fnamemodify(tmp, ":t") .. ".md")),
   true,
-  "markdown under xprompts/ eligible"
+  "markdown under canonical sase/xprompts/ eligible"
 )
 
 -- --- End-to-end editing in real buffers ------------------------------------ #

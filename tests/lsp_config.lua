@@ -120,7 +120,16 @@ same(lsp._config().filetypes, { "markdown" }, "lsp filetypes merged")
 same(lsp._config().allow_all_markdown, false, "all-markdown attachment is off by default")
 same(lsp._config().native_completion, "auto", "native completion defaults to auto")
 
-same(lsp._is_supported_markdown_path("/tmp/project/xprompts/foo.md"), true, "xprompts markdown is supported")
+same(
+  lsp._is_supported_markdown_path("/tmp/project/sase/xprompts/foo.md"),
+  true,
+  "canonical xprompts markdown is supported"
+)
+same(
+  lsp._is_supported_markdown_path("/tmp/project/xprompts/foo.md"),
+  true,
+  "legacy visible xprompts markdown is supported"
+)
 same(lsp._is_supported_markdown_path("/tmp/project/.xprompts/foo.md"), true, ".xprompts markdown is supported")
 same(
   lsp._is_supported_markdown_path("/tmp/project/src/sase/default_xprompts/research_swarm.md"),
@@ -158,7 +167,7 @@ same(
   "sase_prompt filetype support does not require a markdown path"
 )
 
-vim.api.nvim_buf_set_name(0, vim.fn.getcwd() .. "/xprompts/current.md")
+vim.api.nvim_buf_set_name(0, vim.fn.getcwd() .. "/sase/xprompts/current.md")
 vim.bo.filetype = "markdown"
 local original_start = vim.lsp.start
 local captured_config = nil

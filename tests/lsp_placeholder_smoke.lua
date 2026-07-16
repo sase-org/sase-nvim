@@ -154,11 +154,12 @@ end
 
 local root = vim.fn.tempname()
 vim.fn.mkdir(root .. "/.sase", "p")
+vim.fn.mkdir(root .. "/sase", "p")
 vim.fn.writefile({
   "ace:",
   "  snippets:",
   "    cbi: '`<$1>`$0'",
-}, root .. "/sase.yml")
+}, root .. "/sase/sase.yml")
 
 local prompt_path = root .. "/sase_prompt_placeholder_smoke.md"
 vim.fn.writefile({ "" }, prompt_path)

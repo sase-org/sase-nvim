@@ -90,10 +90,14 @@ vim.api.nvim_create_autocmd = original_create_autocmd
 vim.api.nvim_create_augroup = original_create_augroup
 
 local config_globs = nil
+local workflow_globs = nil
 for _, call in ipairs(config_calls) do
   local schemas = call.settings and call.settings.yaml and call.settings.yaml.schemas or {}
   if schemas["/tmp/sase.schema.json"] then
     config_globs = schemas["/tmp/sase.schema.json"]
+  end
+  if schemas["/tmp/workflow.schema.json"] then
+    workflow_globs = schemas["/tmp/workflow.schema.json"]
   end
 end
 
@@ -103,6 +107,27 @@ end
 
 if not contains(config_globs, "**/src/sase/default_config.yml") then
   error("default_config.yml is missing from config schema globs: " .. vim.inspect(config_globs))
+end
+if not contains(config_globs, "**/sase/sase.yml") then
+  error("canonical project config is missing from config schema globs: " .. vim.inspect(config_globs))
+end
+if not contains(config_globs, "**/sase.yml") then
+  error("legacy project config is missing from config schema globs: " .. vim.inspect(config_globs))
+end
+if not workflow_globs then
+  error("xprompt workflow schema was not applied")
+end
+for _, glob in ipairs({
+  "**/sase/xprompts/**/*.yml",
+  "**/sase/xprompts/**/*.yaml",
+  "**/.xprompts/**/*.yml",
+  "**/.xprompts/**/*.yaml",
+  "**/xprompts/**/*.yml",
+  "**/xprompts/**/*.yaml",
+}) do
+  if not contains(workflow_globs, glob) then
+    error("xprompt workflow glob is missing: " .. glob .. " in " .. vim.inspect(workflow_globs))
+  end
 end
 
 if not lsp_attach_callback then
