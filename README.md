@@ -91,6 +91,10 @@ Automatically configures `yamlls` with schema associations for sase YAML files:
   `.xprompts/` directories during the compatibility window
 - **XPrompt collection schema** — Applied to `xprompts.yml` / `xprompts.yaml` files
 
+The legacy associations are editor read compatibility, not recommended save locations. SASE 0.10 writes project content
+only to `sase/sase.yml` and `sase/xprompts/`; no legacy-removal release is assigned. See the
+[content-layout migration guide](https://sase.sh/content-layout/) before deleting or consolidating both-path trees.
+
 Schema paths are resolved asynchronously via `sase path` to avoid blocking Neovim startup.
 
 ### XPrompt LSP
