@@ -34,6 +34,7 @@ dispatcher when the server command is unavailable or disabled:
 | `#gh:` / `#git:` (VCS ref root)              | LSP VCS ref completion for projects, PRs, and namespaces |
 | `#gh:owner/` / `#gh(owner/` (VCS repo ref)   | LSP VCS repository completion                            |
 | bare snippet trigger prefix (`foo`)          | LSP SASE snippet completion                              |
+| inside `<placeholder>`                       | LSP document-local placeholder completion                |
 | path-like token (`~/foo`, `./bar`, `a/b.c`…) | LSP file completion, or file picker                      |
 | empty / no token                             | LSP recent-file completion, or recent files picker       |
 
@@ -129,6 +130,18 @@ items supplied by the server. Snippets come from the same Python helper-backed r
 including `ace.snippets` and xprompts marked with `snippet: true` or `snippet: <trigger>`. The Lua plugin does not shell
 out to load that registry.
 
+#### Placeholder completion
+
+Typing `<` inside a prompt offers placeholder texts already used elsewhere in the current buffer. Continue typing to
+filter them case-insensitively, then accept a row to replace the current inner text and finish the closing `>`. The menu
+stays quiet when the buffer has no reusable placeholders.
+
+The server advertises `<` as a completion trigger, so native `vim.lsp.completion` and `nvim-cmp` open the menu without
+extra Lua configuration. A SASE snippet whose first tabstop is immediately inside `<>` also asks the editor to trigger
+completion after expansion; for example, accepting a `cbi` snippet such as `` `<$1>`$0 `` moves directly into the
+placeholder menu while preserving later snippet tabstops. Use the configured `<C-t>` dispatcher to request the same
+completion manually.
+
 The server also advertises `+` as a completion trigger character. Typing `#+` at the start of a line, at end of buffer,
 or after whitespace opens a menu of active VCS projects; typing `#+sa` filters by project name. Accepting an item
 prepends the project's VCS xprompt workflow tag (e.g. `#gh:sase`) to the start of the prompt and removes the `#+query`
@@ -154,6 +167,17 @@ Manual smoke check (snippets):
 1. Add a local `sase.yml` with an `ace.snippets` entry and an xprompt with `snippet: true`.
 2. Open an eligible Markdown or SASE prompt buffer under that project and type the snippet trigger prefix.
 3. Invoke LSP completion, accept the snippet item, and verify Neovim expands the `$1`/`$0` tabstops.
+
+Manual smoke check (placeholder completion):
+
+1. Open an eligible prompt buffer and enter a reusable placeholder, such as `Review <the plan> first.`
+2. On another line, type `<`; verify `the plan` appears. Continue with `<the p` to verify prefix filtering.
+3. Accept the row and verify the text becomes `<the plan>` with the cursor after `>`. Press `<C-t>` inside another
+   placeholder to verify the manual trigger path.
+4. If a snippet such as `` cbi: '`<$1>`$0' `` is configured, accept `cbi` and verify the placeholder menu opens at
+   `$1` while normal snippet tabstop navigation remains available.
+
+The headless equivalent of this check lives in `tests/lsp_placeholder_smoke.lua`.
 
 Manual smoke check (`#+` VCS project completion):
 
