@@ -42,6 +42,18 @@ local PAIR_SAFE_CLOSE = {
   [">"] = true,
 }
 
+-- Trailing punctuation can never begin a token, so padding inserted directly
+-- before it is unambiguous -- this is how a fan-out question is normally
+-- authored (`Which is better %{ A | B }?`).
+local PAIR_SAFE_PUNCTUATION = {
+  ["."] = true,
+  [","] = true,
+  [";"] = true,
+  [":"] = true,
+  ["!"] = true,
+  ["?"] = true,
+}
+
 local config = {
   enabled = true,
   filetypes = DEFAULT_FILETYPES,
@@ -82,7 +94,9 @@ local function next_char_allows_brace_padding(line, offset)
     return true
   end
   local following = line:sub(offset + 1, offset + 1)
-  return following:match("%s") ~= nil or PAIR_SAFE_CLOSE[following] == true
+  return following:match("%s") ~= nil
+    or PAIR_SAFE_CLOSE[following] == true
+    or PAIR_SAFE_PUNCTUATION[following] == true
 end
 
 -- Return the 0-indexed position of the `}` matching the `{` at 0-indexed

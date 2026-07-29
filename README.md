@@ -241,7 +241,9 @@ Override the look by linking or defining those groups in your colorscheme (e.g.
 
 - Typing `{` immediately after a directive-valid `%` inserts two spaces after the opening brace and parks the cursor
   after the first space. The plugin does not insert the closing `}`; use your normal editor auto-pair plugin for brace
-  pairing.
+  pairing. Padding fires at end of line, before whitespace, before a bracket closer (`)`, `]`, `}`, `>`), and before
+  trailing punctuation (`.`, `,`, `;`, `:`, `!`, `?`); it remains suppressed before word characters and other
+  token-opening characters.
 - Typing `|` inside a live `%{...}` span inserts a padded ` | ` separator, keeps the cursor before the closing `}`, and
   normalizes comma spacing in the current branch — for example, typing `|` after `%{foo ,bar, and baz` yields
   `%{foo, bar, and baz | }`.

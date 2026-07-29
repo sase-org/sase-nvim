@@ -58,9 +58,15 @@ same(
   { start = 2, stop = 2, text = "  ", cursor = 3 },
   "brace padding before external closer"
 )
+same(
+  alt.plan_brace_padding("%{?", 2),
+  { start = 2, stop = 2, text = "  ", cursor = 3 },
+  "brace padding before trailing punctuation"
+)
 same(alt.plan_brace_padding("word{", 5), nil, "brace padding requires percent")
 same(alt.plan_brace_padding("a%{", 3), nil, "brace padding ignores non-directive percent")
 same(alt.plan_brace_padding("%{word", 2), nil, "brace padding rejects unsafe following character")
+same(alt.plan_brace_padding('%{"', 2), nil, "brace padding rejects ambiguous quote")
 
 -- --- supports_buffer: attach eligibility ----------------------------------- #
 
