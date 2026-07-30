@@ -33,6 +33,7 @@ dispatcher when the server command is unavailable or disabled:
 | `#+` / `#+project` (VCS project trigger)     | LSP VCS project completion (expands to `#gh:sase …`)     |
 | `#gh:` / `#git:` (VCS ref root)              | LSP VCS ref completion for projects, PRs, and namespaces |
 | `#gh:owner/` / `#gh(owner/` (VCS repo ref)   | LSP VCS repository completion                            |
+| `@` / `@kind:query` (artifact reference)     | LSP fuzzy artifact-reference completion, server-ranked   |
 | bare snippet trigger prefix (`foo`)          | LSP SASE snippet completion                              |
 | inside `<placeholder>`                       | LSP document-local placeholder completion                |
 | path-like token (`~/foo`, `./bar`, `a/b.c`…) | LSP file completion, or file picker                      |
@@ -169,6 +170,16 @@ as `#gh:bbugyi200/` or `#gh(bbugyi200/` asks the owning workspace provider for r
 a row replaces only the ref value, preserving the workflow prefix and HITL suffix; colon refs receive a trailing space
 (`#gh:bbugyi200/sase `), while parenthesized refs receive a closing parenthesis (`#gh(bbugyi200/sase)`).
 
+Artifact-reference completion is available on `@` tokens, which the server also advertises as a trigger character. A bare
+`@` lists artifact kinds such as `@plans:` plus local paths such as `@src/`; after `@kind:` it lists that kind's
+payloads. Matching is **fuzzy and ranked server-side**, so any memorable fragment of a payload's path or title finds it —
+`@research:site` completes `@research:202607/sase_sites_hub_and_pages/sase_sites_hub_and_pages.md`. No Lua configuration
+is needed, but the ranking depends on two things the server sets deliberately: every item's `filterText` is the reference
+text **as typed** rather than the inserted reference, so Neovim's prefix filter keeps the fuzzy rows, and the response is
+an incomplete list, so Neovim re-requests per keystroke and leaves the server's `sortText` order alone instead of
+re-sorting. Because editors cannot highlight inside a completion label, the matched characters are bolded in each item's
+markdown `documentation` preview, with the document title on a second line.
+
 Manual smoke check (snippets):
 
 1. Add a local `sase/sase.yml` with an `ace.snippets` entry and an xprompt with `snippet: true`.
@@ -212,6 +223,17 @@ Manual smoke check (`#gh:owner/` VCS repository completion):
 3. Accept a repository and verify only the ref value changes, such as `#gh:bbugyi200/sase ` or `#gh(bbugyi200/sase)`.
 
 The headless equivalent of this check lives in `tests/lsp_vcs_repo_smoke.lua`.
+
+Manual smoke check (`@` artifact-reference completion):
+
+1. From an active SASE project with a document sidecar, open an eligible prompt buffer.
+2. Type `@` and verify artifact-kind rows appear; continue with a fuzzy fragment such as `@rsch` and verify `@research:`
+   is still offered.
+3. Accept the kind, then type a fragment of a document's path or name, such as `@research:site`. Verify the full nested
+   reference appears, that the preview window bolds the matched characters, and that accepting it inserts the whole
+   `@research:<path>` reference.
+
+The headless equivalent of this check lives in `tests/lsp_artifact_ref_smoke.lua`.
 
 For troubleshooting, check Neovim's LSP log (`:lua print(vim.lsp.get_log_path())`) and verify the server command with
 `sase lsp --version` or `sase-xprompt-lsp --version`.
