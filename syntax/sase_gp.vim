@@ -22,6 +22,7 @@ syn match saseGpFieldLabel /^PARENT:/
 syn match saseGpFieldLabel /^CL:/
 syn match saseGpFieldLabel /^PR:/
 syn match saseGpFieldLabel /^BUG:/
+syn match saseGpFieldLabel /^REFS:/
 syn match saseGpFieldLabel /^TEST TARGETS:/
 syn match saseGpFieldLabel /^KICKSTART:/
 syn match saseGpFieldLabel /^COMMITS:/
@@ -59,6 +60,9 @@ syn match saseGpStatusReserved  /\%(^STATUS: \)\@<=Reserved/
 
 " --- PARENT value ---
 syn match saseGpParentValue /\%(^PARENT: \)\@<=.\+/
+
+" --- REFS entries (canonical artifact references) ---
+syn match saseGpArtifactRef /^\s\+\zs[a-z][a-z0-9_-]*:\S\+\ze\s*$/
 
 " --- CL / PR / BUG values (links) ---
 syn match saseGpLinkValue /\%(^CL: \)\@<=.\+/
@@ -178,6 +182,9 @@ hi def saseGpStatusReserved      guifg=#AF87AF gui=bold ctermfg=139 cterm=bold
 
 " Parent value: bold cyan-green
 hi def saseGpParentValue         guifg=#00D7AF gui=bold ctermfg=43 cterm=bold
+
+" Artifact references: light blue
+hi def saseGpArtifactRef         guifg=#87AFFF ctermfg=111
 
 " CL/PR/BUG links: bold underline blue
 hi def saseGpLinkValue           guifg=#569CD6 gui=bold,underline ctermfg=75 cterm=bold,underline
