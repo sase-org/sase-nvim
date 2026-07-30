@@ -168,8 +168,20 @@ local function document_project(name)
       artifact_index_path = project_root .. "/artifact-index.jsonl",
       repositories = {},
       projects = {},
+      agent_roots = {
+        { project = name, root = project_root },
+      },
     },
   }
+end
+
+-- Agent payloads are global names, so `@agent:sase-b3` is a mid-name fragment
+-- rather than a prefix. Publish a page under a longer sibling so a prefix-only
+-- server would return nothing here.
+local agent_name = "bbugyi200.athena.sase-b3.5"
+for _, published in ipairs({ agent_name, "bbugyi200.athena.unrelated-lane" }) do
+  vim.fn.mkdir(root .. "/sase/agents/" .. published, "p")
+  vim.fn.writefile({ "# " .. published, "" }, root .. "/sase/agents/" .. published .. "/README.md")
 end
 vim.fn.writefile({
   vim.json.encode({
@@ -226,6 +238,30 @@ if not bundled.documentation or not bundled.documentation.value:find("**site**",
 end
 if not vim.tbl_contains(client_words(client_id, payload_line, payload_result), reference) then
   fail("Neovim's completion filter dropped the server-ranked fuzzy payload row")
+end
+
+-- Agent payloads are ranked by the same matcher, which is the half the Rust
+-- tests cannot prove: a mid-name fragment has to survive the client filter too,
+-- and the row has to carry the agent's short name as its title.
+local agent_line = "@agent:sase-b3"
+local agent_result = completion_list(agent_line)
+local agent_reference = "@agent:" .. agent_name
+local agent_items = items_of(agent_result)
+local published = find_item(agent_items, agent_reference)
+if not published then
+  fail("fuzzy query did not surface the published agent page: " .. vim.inspect(agent_items))
+end
+if published.filterText ~= agent_line then
+  fail("agent filterText is not the typed reference: " .. vim.inspect(published))
+end
+if not published.textEdit or published.textEdit.newText ~= agent_reference then
+  fail("agent textEdit does not insert the full reference: " .. vim.inspect(published))
+end
+if not published.labelDetails or published.labelDetails.detail ~= " · 5" then
+  fail("agent row does not carry its short name as a title: " .. vim.inspect(published.labelDetails))
+end
+if not vim.tbl_contains(client_words(client_id, agent_line, agent_result), agent_reference) then
+  fail("Neovim's completion filter dropped the server-ranked fuzzy agent row")
 end
 
 -- The kind stage is fuzzy too, and filters on the bare typed word.
