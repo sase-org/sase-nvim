@@ -25,6 +25,7 @@ syn match saseGpFieldLabel /^BUG:/
 syn match saseGpFieldLabel /^REFS:/
 syn match saseGpFieldLabel /^TEST TARGETS:/
 syn match saseGpFieldLabel /^KICKSTART:/
+syn match saseGpFieldLabel /^STITCHES:/
 syn match saseGpFieldLabel /^COMMITS:/
 syn match saseGpFieldLabel /^HOOKS:/
 syn match saseGpFieldLabel /^COMMENTS:/

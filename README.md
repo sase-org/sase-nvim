@@ -30,7 +30,7 @@ dispatcher when the server command is unavailable or disabled:
 | `#token` / `#!token` (xprompt reference)     | LSP completion, or legacy xprompt picker                 |
 | `/skill` / `/partial` (slash skill)          | LSP completion, or skill-filtered picker                 |
 | `%directive`                                 | LSP directive completion                                 |
-| `#+` / `#+project` (VCS project trigger)     | LSP VCS project completion (expands to `#gh:sase …`)     |
+| `+` / `+project` (VCS project trigger)       | LSP VCS project completion (expands to `#gh:sase …`)     |
 | `#gh:` / `#git:` (VCS ref root)              | LSP VCS ref completion for projects, PRs, and namespaces |
 | `#gh:owner/` / `#gh(owner/` (VCS repo ref)   | LSP VCS repository completion                            |
 | `@` / `@kind:query` (artifact reference)     | LSP fuzzy artifact-reference completion, server-ranked   |
@@ -150,9 +150,9 @@ completion after expansion; for example, accepting a `cbi` snippet such as `` `<
 placeholder menu while preserving later snippet tabstops. Use the configured `<C-t>` dispatcher to request the same
 completion manually.
 
-The server also advertises `+` as a completion trigger character. Typing `#+` at the start of a line, at end of buffer,
-or after whitespace opens a menu of active VCS projects; typing `#+sa` filters by project name. Accepting an item
-prepends the project's VCS xprompt workflow tag (e.g. `#gh:sase`) to the start of the prompt and removes the `#+query`
+The server also advertises `+` as a completion trigger character. Typing `+` at the start of a line, at end of buffer,
+or after whitespace opens a menu of active VCS projects; typing `+sa` filters by project name. Accepting an item
+prepends the project's VCS xprompt workflow tag (e.g. `#gh:sase`) to the start of the prompt and removes the `+query`
 token, replacing any VCS tag already present rather than stacking a second one. This is served entirely by the LSP —
 native `vim.lsp.completion` inherits the `+` trigger and applies the prepend/replace as an `additionalTextEdits` edit,
 and `nvim-cmp` picks it up the same way through `cmp_nvim_lsp.default_capabilities()`. No extra Lua configuration is
@@ -160,9 +160,9 @@ required. The completion catalog is materialized by `sase` at LSP launch and re-
 archived projects appear after the catalog is rewritten.
 
 Root ref completion is available inside registered VCS workflow refs before the namespace slash. Typing `:` or `(` after
-a workflow tag, such as `#gh:` or `#git(`, opens project and PR-sized ChangeSpec rows for that provider. Providers can
+a workflow tag, such as `#gh:` or `#git(`, opens project and PR-sized Patch rows for that provider. Providers can
 also add local namespace rows; accepting a namespace inserts a trailing slash such as `#gh:sase-org/` and asks the
-editor to trigger completion again so repository completion can take over. Accepting a project or ChangeSpec completes
+editor to trigger completion again so repository completion can take over. Accepting a project or Patch completes
 the current ref token, for example `#gh:sase ` or `#gh(sase)`.
 
 Repository-name completion is available inside registered VCS workflow refs after the namespace slash. Typing a ref such
@@ -197,10 +197,10 @@ Manual smoke check (placeholder completion):
 
 The headless equivalent of this check lives in `tests/lsp_placeholder_smoke.lua`.
 
-Manual smoke check (`#+` VCS project completion):
+Manual smoke check (`+` VCS project completion):
 
 1. From an active SASE project, open an eligible buffer (e.g. `sase_prompt_*.md`) under a `.sase`/`.git` root.
-2. Type a prompt followed by `#+` (for example `Describe this repo. #+`); the project menu opens. Filter with `#+sa`.
+2. Type a prompt followed by `+` (for example `Describe this repo. +`); the project menu opens. Filter with `+sa`.
 3. Accept a project and verify the prompt becomes `#gh:<project> Describe this repo.` with any prior VCS tag replaced.
 
 The headless equivalent of this check lives in `tests/lsp_vcs_project_smoke.lua`.
@@ -208,7 +208,7 @@ The headless equivalent of this check lives in `tests/lsp_vcs_project_smoke.lua`
 Manual smoke check (`#gh:` VCS ref-root completion):
 
 1. From an active SASE project with the relevant workspace-provider plugin installed, open an eligible prompt buffer.
-2. Type a registered workflow ref root, such as `#gh:` or `#git:`, and verify projects and active PR-sized ChangeSpecs
+2. Type a registered workflow ref root, such as `#gh:` or `#git:`, and verify projects and active PR-sized Patches
    appear. For GitHub, namespace rows such as `sase-org/` may also appear.
 3. Accept a project and verify the ref becomes `#gh:sase ` or `#gh(sase)`. Accept a namespace and verify it becomes
    `#gh:sase-org/` without closing the prompt token, ready for repository completion.
