@@ -263,7 +263,7 @@ require("sase").setup({
 
 Manual smoke check (glossary underline):
 
-1. From a SASE project with a `glossary` entry in `sase/sase.yml`, open an eligible prompt buffer.
+1. From a SASE project with a `memory.glossary` entry in `sase/sase.yml`, open an eligible prompt buffer.
 2. Enter a known glossary phrase and wait for the `sase-xprompt-lsp` client to attach.
 3. Verify the phrase is underlined and still uses the colorscheme's semantic-token color.
 4. Override `SaseGlossaryTerm` in the colorscheme and verify the override wins after a `:colorscheme` reload.
