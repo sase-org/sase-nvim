@@ -187,8 +187,8 @@ local reused = {
   "Reuse <>.",
 }
 local reused_items = completion_items(reused, 1, 7)
-if not vim.deep_equal(labels(reused_items), { "the plan", "the prompt" }) then
-  fail("placeholder candidates are not in document order: " .. vim.inspect(reused_items))
+if not vim.deep_equal(labels(reused_items), { "the prompt", "the plan" }) then
+  fail("placeholder candidates are not ranked with editable prompt text first: " .. vim.inspect(reused_items))
 end
 for _, item in ipairs(reused_items) do
   if item.kind ~= vim.lsp.protocol.CompletionItemKind.Variable then

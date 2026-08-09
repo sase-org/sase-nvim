@@ -161,6 +161,7 @@ local function document_project(name)
     key = "key_" .. name,
     aliases = { name .. "-alias" },
     context = {
+      schema_version = 1,
       document_roots = {
         { kind = "designs", root = project_root .. "/designs" },
       },
