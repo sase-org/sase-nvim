@@ -235,6 +235,41 @@ Manual smoke check (`@` artifact-reference completion):
 
 The headless equivalent of this check lives in `tests/lsp_artifact_ref_smoke.lua`.
 
+#### Glossary term underline
+
+The xprompt LSP emits project glossary phrases as standard `type` semantic tokens. Neovim keeps coloring those tokens
+through your semantic-token theme, and `sase-nvim` adds the followable-term affordance with one extra highlight group:
+
+| Highlight group    | Applied to                          | Default                                   |
+| ------------------ | ----------------------------------- | ----------------------------------------- |
+| `SaseGlossaryTerm` | SASE glossary phrase `type` tokens | underline only; color left to colorscheme |
+
+Override the underline in your colorscheme or after setup:
+
+```lua
+vim.api.nvim_set_hl(0, "SaseGlossaryTerm", { underline = false, undercurl = true })
+```
+
+The feature is enabled by default after `setup()` when Neovim exposes `LspTokenUpdate` and
+`vim.lsp.semantic_tokens.highlight_token`:
+
+```lua
+require("sase").setup({
+  glossary_highlight = {
+    enabled = true, -- default
+  },
+})
+```
+
+Manual smoke check (glossary underline):
+
+1. From a SASE project with a `glossary` entry in `sase/sase.yml`, open an eligible prompt buffer.
+2. Enter a known glossary phrase and wait for the `sase-xprompt-lsp` client to attach.
+3. Verify the phrase is underlined and still uses the colorscheme's semantic-token color.
+4. Override `SaseGlossaryTerm` in the colorscheme and verify the override wins after a `:colorscheme` reload.
+
+The headless equivalent of this check lives in `tests/glossary_highlight.lua`.
+
 For troubleshooting, check Neovim's LSP log (`:lua print(vim.lsp.get_log_path())`) and verify the server command with
 `sase lsp --version` or `sase-xprompt-lsp --version`.
 
@@ -388,9 +423,10 @@ require("sase").setup({
 │   └── sase_gp.lua              # Filetype detection for .sase (and legacy .gp) files under .sase/projects/
 ├── lua/
 │   ├── sase/
-│   │   ├── init.lua             # require("sase").setup entry point
-│   │   ├── lsp.lua              # xprompt LSP client setup
-│   │   ├── xprompt.lua          # #@ xprompt picker core
+│   │   ├── init.lua               # require("sase").setup entry point
+│   │   ├── lsp.lua                # xprompt LSP client setup
+│   │   ├── glossary_highlight.lua # glossary semantic-token underline
+│   │   ├── xprompt.lua            # #@ xprompt picker core
 │   │   └── complete/
 │   │       ├── _picker.lua      # shared insertion and insert-mode restore helpers
 │   │       ├── _token.lua       # legacy fallback token classification
