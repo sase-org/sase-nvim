@@ -21,6 +21,7 @@ syn match saseGpFieldLabel /^STATUS:/
 syn match saseGpFieldLabel /^PARENT:/
 syn match saseGpFieldLabel /^CL:/
 syn match saseGpFieldLabel /^PR:/
+syn match saseGpFieldLabel /^PR_ORIGIN:/
 syn match saseGpFieldLabel /^BUG:/
 syn match saseGpFieldLabel /^REFS:/
 syn match saseGpFieldLabel /^TEST TARGETS:/
@@ -58,6 +59,11 @@ syn match saseGpStatusSubmitted /\%(^STATUS: \)\@<=Submitted/
 syn match saseGpStatusReverted  /\%(^STATUS: \)\@<=Reverted/
 syn match saseGpStatusArchived  /\%(^STATUS: \)\@<=Archived/
 syn match saseGpStatusReserved  /\%(^STATUS: \)\@<=Reserved/
+
+" --- PR_ORIGIN values (tri-state provenance, each gets its own color) ---
+syn match saseGpOriginSase     /\%(^PR_ORIGIN: \)\@<=sase/
+syn match saseGpOriginExternal /\%(^PR_ORIGIN: \)\@<=external/
+syn match saseGpOriginUnknown  /\%(^PR_ORIGIN: \)\@<=unknown/
 
 " --- PARENT value ---
 syn match saseGpParentValue /\%(^PARENT: \)\@<=.\+/
@@ -180,6 +186,11 @@ hi def saseGpStatusSubmitted     guifg=#00AF00 gui=bold ctermfg=34 cterm=bold
 hi def saseGpStatusReverted      guifg=#808080 gui=bold ctermfg=244 cterm=bold
 hi def saseGpStatusArchived      guifg=#606060 gui=bold ctermfg=240 cterm=bold
 hi def saseGpStatusReserved      guifg=#AF87AF gui=bold ctermfg=139 cterm=bold
+
+" PR_ORIGIN values (matching PR_ORIGIN_VALUE_STYLES in the TUI)
+hi def saseGpOriginSase          guifg=#87D7AF gui=bold ctermfg=115 cterm=bold
+hi def saseGpOriginExternal      guifg=#FF5F5F gui=bold ctermfg=203 cterm=bold
+hi def saseGpOriginUnknown       guifg=#FF5F5F ctermfg=203
 
 " Parent value: bold cyan-green
 hi def saseGpParentValue         guifg=#00D7AF gui=bold ctermfg=43 cterm=bold
