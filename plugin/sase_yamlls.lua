@@ -62,35 +62,20 @@ vim.api.nvim_create_autocmd("LspAttach", {
   end,
 })
 
--- sase config files (canonical project config, compatibility path, global
--- overlays, and the unchanged package default)
+-- sase config files (canonical project config, global overlays, and the
+-- unchanged package default)
 resolve_schema("config-schema", function(schema)
   apply_schema(schema, {
     "**/sase/sase.yml",
-    -- Legacy project config remains schema-backed during migration.
-    "**/sase.yml",
     "**/sase_*.yml",
     "**/src/sase/default_config.yml",
   })
 end)
 
--- xprompt workflow files (canonical and compatibility directories)
+-- xprompt workflow files under the canonical project layout
 resolve_schema("xprompts-schema", function(schema)
   apply_schema(schema, {
     "**/sase/xprompts/**/*.yml",
     "**/sase/xprompts/**/*.yaml",
-    -- Legacy project/home directories remain schema-backed during migration.
-    "**/.xprompts/**/*.yml",
-    "**/.xprompts/**/*.yaml",
-    "**/xprompts/**/*.yml",
-    "**/xprompts/**/*.yaml",
-  })
-end)
-
--- xprompt collection files  (xprompts.yml)
-resolve_schema("xprompts-collection-schema", function(schema)
-  apply_schema(schema, {
-    "**/xprompts.yml",
-    "**/xprompts.yaml",
   })
 end)

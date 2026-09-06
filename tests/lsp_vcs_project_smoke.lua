@@ -190,13 +190,13 @@ vim.fn.writefile({
         status = "Ready",
       },
       {
-        name = "legacy-completion",
+        name = "review-completion",
         vcs_prefix = "gh",
-        display_tag = "#gh:legacy-completion",
+        display_tag = "#gh:review-completion",
         provider_display = "GitHub",
-        description = "Legacy completion Patch",
+        description = "Review completion Patch",
         aliases = {},
-        kind = "changespec",
+        kind = "patch",
         project = "sase",
         status = "Ready",
       },
@@ -235,11 +235,11 @@ assert_plus_trigger(client_id)
 assert_expansion("+s", "sase", "#gh:sase ", "+sase", "#gh:sase")
 assert_expansion("+ship", "ship-completion", "#gh:ship-completion ", "+ship-completion", "#gh:ship-completion")
 assert_expansion(
-  "+legacy",
-  "legacy-completion",
-  "#gh:legacy-completion ",
-  "+legacy-completion",
-  "#gh:legacy-completion"
+  "+review",
+  "review-completion",
+  "#gh:review-completion ",
+  "+review-completion",
+  "#gh:review-completion"
 )
 assert_expansion("Describe this repo. +", "sase", "#gh:sase Describe this repo.", "+sase", "#gh:sase")
 -- Replace-existing: a leading VCS tag is swapped, never stacked.

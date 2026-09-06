@@ -1,5 +1,5 @@
--- Compatibility token extraction + classification helpers for the legacy
--- <C-t> picker fallback. Normal completion is served by the xprompt LSP.
+-- Token extraction + classification helpers for the <C-t> picker fallback.
+-- Normal completion is served by the xprompt LSP.
 
 local M = {}
 

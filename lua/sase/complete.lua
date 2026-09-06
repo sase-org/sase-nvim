@@ -1,7 +1,7 @@
 -- <C-t> completion dispatcher.
 --
 -- Uses the xprompt LSP as the normal path when available, with the
--- compatibility picker dispatcher kept for legacy fallback and browse UI.
+-- picker dispatcher kept for fallback and browse UI.
 
 local M = {}
 
@@ -11,7 +11,17 @@ local config = {
   completion_backend = "auto",
 }
 
-local function legacy_trigger()
+local function normalize_completion_backend(value)
+  if value == "legacy" then
+    return "picker"
+  end
+  if value == "auto" or value == "lsp" or value == "picker" then
+    return value
+  end
+  return "auto"
+end
+
+local function picker_trigger()
   local info = _token.token_under_cursor()
   local token_text = info and info.text or nil
   local kind = _token.classify(token_text)
@@ -57,7 +67,7 @@ function M.trigger()
     if require("sase.lsp").complete() then
       return
     end
-    legacy_trigger()
+    picker_trigger()
     return
   end
 
@@ -65,7 +75,7 @@ function M.trigger()
     return
   end
 
-  legacy_trigger()
+  picker_trigger()
 end
 
 --- Register the <C-t> completion keymap.
@@ -73,10 +83,10 @@ end
 --- Opt-in: pass `keymap = true` (or a string like "<C-t>") to install
 --- the binding. The default is *no* keymap so users who installed the
 --- plugin only for syntax highlighting don't have their keys clobbered.
---- @param opts? { keymap?: boolean|string, completion_backend?: "auto"|"lsp"|"legacy" }
+--- @param opts? { keymap?: boolean|string, completion_backend?: "auto"|"lsp"|"picker" }
 function M.setup(opts)
   opts = opts or {}
-  config.completion_backend = opts.completion_backend or "auto"
+  config.completion_backend = normalize_completion_backend(opts.completion_backend or "auto")
   if opts.keymap then
     local lhs = type(opts.keymap) == "string" and opts.keymap or "<C-t>"
     vim.keymap.set("i", lhs, function()
@@ -88,5 +98,7 @@ end
 function M._config()
   return config
 end
+
+M._normalize_completion_backend = normalize_completion_backend
 
 return M

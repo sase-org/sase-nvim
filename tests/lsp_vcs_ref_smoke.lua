@@ -178,13 +178,13 @@ vim.fn.writefile({
         status = "Ready",
       },
       {
-        name = "legacy-completion",
+        name = "review-completion",
         vcs_prefix = "gh",
-        display_tag = "#gh:legacy-completion",
+        display_tag = "#gh:review-completion",
         provider_display = "GitHub",
-        description = "Legacy completion Patch",
+        description = "Review completion Patch",
         aliases = {},
-        kind = "changespec",
+        kind = "patch",
         project = "sase",
         status = "Ready",
       },
@@ -241,7 +241,7 @@ assert_ref_triggers(client_id)
 assert_completion("#gh:", "sase", "#gh:sase ", "sase ")
 assert_completion("#gh:sa", "sase", "#gh:sase ", "sase ")
 assert_completion("#gh:ship", "ship-completion", "#gh:ship-completion ", "ship-completion ")
-assert_completion("#gh:legacy", "legacy-completion", "#gh:legacy-completion ", "legacy-completion ")
+assert_completion("#gh:review", "review-completion", "#gh:review-completion ", "review-completion ")
 
 local namespace = assert_completion("#gh:", "sase-org/", "#gh:sase-org/", "sase-org/")
 if not namespace.command or namespace.command.command ~= "editor.action.triggerSuggest" then

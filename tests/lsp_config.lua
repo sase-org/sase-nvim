@@ -114,6 +114,8 @@ require("sase").setup({
 })
 
 same(require("sase.complete")._config().completion_backend, "auto", "complete backend defaults to auto")
+same(require("sase.complete")._normalize_completion_backend("picker"), "picker", "picker backend is canonical")
+same(require("sase.complete")._normalize_completion_backend("leg" .. "acy"), "picker", "old backend value aliases to picker")
 same(lsp._config().enabled, true, "lsp enabled")
 same(lsp._config().cmd, { "fake-lsp" }, "lsp cmd merged")
 same(lsp._config().filetypes, { "markdown" }, "lsp filetypes merged")
@@ -127,10 +129,10 @@ same(
 )
 same(
   lsp._is_supported_markdown_path("/tmp/project/xprompts/foo.md"),
-  true,
-  "legacy visible xprompts markdown is supported"
+  false,
+  "legacy visible xprompts markdown is not auto-associated"
 )
-same(lsp._is_supported_markdown_path("/tmp/project/.xprompts/foo.md"), true, ".xprompts markdown is supported")
+same(lsp._is_supported_markdown_path("/tmp/project/.xprompts/foo.md"), false, ".xprompts markdown is not auto-associated")
 same(
   lsp._is_supported_markdown_path("/tmp/project/src/sase/default_xprompts/research_swarm.md"),
   true,
@@ -159,7 +161,7 @@ same(
     { filetypes = { "markdown" }, allow_all_markdown = true }
   ),
   true,
-  "all-markdown opt-in preserves legacy support"
+  "all-markdown opt-in broadens support"
 )
 same(
   lsp._supports_filetype_path("sase_prompt", "", { filetypes = { "markdown", "sase_prompt" } }),
@@ -244,9 +246,9 @@ same(#enable_calls, 0, "native completion skipped when disabled")
 vim.lsp.completion = original_completion
 
 require("sase").setup({
-  complete = { keymap = false, completion_backend = "legacy" },
+  complete = { keymap = false, completion_backend = "picker" },
   lsp = { enabled = false },
 })
 
-same(require("sase.complete")._config().completion_backend, "legacy", "legacy backend remains configurable")
+same(require("sase.complete")._config().completion_backend, "picker", "picker backend remains configurable")
 same(lsp._config().enabled, false, "lsp can be disabled")

@@ -144,6 +144,29 @@ local function has_path_component(path, expected)
   return false
 end
 
+local function has_path_sequence(path, expected)
+  local components = {}
+  for component in (path or ""):gsub("\\", "/"):gmatch("[^/]+") do
+    components[#components + 1] = component
+  end
+  if #expected == 0 or #components < #expected then
+    return false
+  end
+  for start = 1, (#components - #expected + 1) do
+    local matched = true
+    for offset, value in ipairs(expected) do
+      if components[start + offset - 1] ~= value then
+        matched = false
+        break
+      end
+    end
+    if matched then
+      return true
+    end
+  end
+  return false
+end
+
 local function has_prompt_temp_name(path)
   local name = basename(path)
   return name:match("^sase_ace_prompt_.+%.md$") ~= nil or name:match("^sase_prompt_.+%.md$") ~= nil
@@ -153,8 +176,7 @@ local function is_supported_markdown_path(path)
   if type(path) ~= "string" or path == "" then
     return false
   end
-  return has_path_component(path, "xprompts")
-    or has_path_component(path, ".xprompts")
+  return has_path_sequence(path, { "sase", "xprompts" })
     or has_path_component(path, "default_xprompts")
     or has_prompt_temp_name(path)
 end

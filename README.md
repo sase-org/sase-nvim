@@ -9,8 +9,8 @@ highlighting for project spec files, plus YAML language server schema configurat
 
 ### Filetype Detection & Syntax Highlighting
 
-Automatic detection and syntax highlighting for project spec files (`~/.sase/projects/<project>/<project>.sase`; legacy
-`.gp` files are also detected) with colors matching the `sase ace` TUI:
+Automatic detection and syntax highlighting for canonical project spec files
+(`~/.sase/projects/<project>/<project>.sase`) with colors matching the `sase ace` TUI:
 
 - Field labels (`NAME:`, `STATUS:`, `HOOKS:`, `RUNNING:`, `WORKSPACE_DIR:`, etc.)
 - Status values with distinct colors (WIP, Draft, Ready, Mailed, Submitted, Reverted, Archived)
@@ -22,12 +22,12 @@ Automatic detection and syntax highlighting for project spec files (`~/.sase/pro
 
 ### `<C-t>` Completion Dispatcher (opt-in)
 
-Insert-mode `<C-t>` asks the SASE xprompt LSP for completion when available, then falls back to the legacy picker
-dispatcher when the server command is unavailable or disabled:
+Insert-mode `<C-t>` asks the SASE xprompt LSP for completion when available, then falls back to the picker dispatcher
+when the server command is unavailable or disabled:
 
 | Cursor on…                                   | Opens…                                                   |
 | -------------------------------------------- | -------------------------------------------------------- |
-| `#token` / `#!token` (xprompt reference)     | LSP completion, or legacy xprompt picker                 |
+| `#token` / `#!token` (xprompt reference)     | LSP completion, or xprompt picker                        |
 | `/skill` / `/partial` (slash skill)          | LSP completion, or skill-filtered picker                 |
 | `%directive`                                 | LSP directive completion                                 |
 | `+` / `+project` (VCS project trigger)       | LSP VCS project completion (expands to `#gh:sase …`)     |
@@ -45,7 +45,7 @@ The keymap is **opt-in** — add this to your config to enable it:
 require("sase").setup({
   complete = {
     keymap = true,                 -- or keymap = "<C-t>"
-    completion_backend = "auto",   -- "auto", "lsp", or "legacy"
+    completion_backend = "auto",   -- "auto", "lsp", or "picker"
   },
   lsp = {
     enabled = true,
@@ -57,12 +57,12 @@ require("sase").setup({
 ```
 
 `completion_backend = "auto"` is the default. It uses the LSP when `sase lsp --version` succeeds or `sase-xprompt-lsp`
-is executable, and otherwise keeps the existing picker behavior. Set `completion_backend = "legacy"` or
-`lsp.enabled = false` to keep the old picker-only path. `lsp.native_completion = "auto"` enables Neovim's native
+is executable, and otherwise keeps the existing picker behavior. Set `completion_backend = "picker"` or
+`lsp.enabled = false` to keep the picker-only path. `lsp.native_completion = "auto"` enables Neovim's native
 `vim.lsp.completion` frontend unless `nvim-cmp` / `cmp_nvim_lsp` is detected. Set it to `false` when `nvim-cmp` should
 own LSP completion and snippet expansion.
 
-The legacy xprompt picker uses `sase xprompt list` insertion metadata. Inline xprompts and embeddable workflows insert
+The xprompt picker uses `sase xprompt list` insertion metadata. Inline xprompts and embeddable workflows insert
 as `#name`; standalone workflows insert as `#!name`. Typing `#!` before `<C-t>` filters the picker to standalone
 workflows. Typing `/` or `/partial` before `<C-t>` filters the picker to entries where `sase xprompt list` reports
 `is_skill = true`, and inserts the selected skill as `/name`. When `sase xprompt list` includes descriptions, fallback
@@ -86,15 +86,13 @@ picker without a selection restores the original single `#`.
 
 Automatically configures `yamlls` with schema associations for sase YAML files:
 
-- **Config schema** — Applied to project `sase/sase.yml`, global `sase_*.yml`, `src/sase/default_config.yml`, and legacy
-  project `sase.yml` files during the compatibility window
-- **XPrompt workflow schema** — Applied to YAML files under canonical `sase/xprompts/` and legacy `xprompts/` or
-  `.xprompts/` directories during the compatibility window
-- **XPrompt collection schema** — Applied to `xprompts.yml` / `xprompts.yaml` files
+- **Config schema** — Applied to project `sase/sase.yml`, global `sase_*.yml`, and
+  `src/sase/default_config.yml`
+- **XPrompt workflow schema** — Applied to YAML files under canonical `sase/xprompts/`
 
-The legacy associations are editor read compatibility, not recommended save locations. SASE 0.10 writes project content
-only to `sase/sase.yml` and `sase/xprompts/`; no legacy-removal release is assigned. See the
-[content-layout migration guide](https://sase.sh/content-layout/) before deleting or consolidating both-path trees.
+SASE may still read older project config and xprompt layouts during the compatibility window, but `sase-nvim` no longer
+advertises or auto-associates those legacy roots. New project content belongs under `sase/sase.yml` and
+`sase/xprompts/`.
 
 Schema paths are resolved asynchronously via `sase path` to avoid blocking Neovim startup.
 
@@ -102,28 +100,28 @@ Schema paths are resolved asynchronously via `sase path` to avoid blocking Neovi
 
 The plugin can start the SASE xprompt language server for git commit, `sase`, `sase_prompt`, and prompt-oriented
 Markdown buffers. Plain Markdown prose files are skipped by default. Markdown buffers are eligible when they are under
-the canonical `sase/xprompts/` directory, under a legacy `xprompts/` or `.xprompts/` directory during the compatibility
-window, or when their filename matches SASE prompt editor temporary files such as `sase_ace_prompt_*.md` or
-`sase_prompt_*.md`. LSP-backed completion is the normal path after `setup()`:
+the canonical `sase/xprompts/` directory, under packaged `default_xprompts/`, or when their filename matches SASE prompt
+editor temporary files such as `sase_ace_prompt_*.md` or `sase_prompt_*.md`. LSP-backed completion is the normal path
+after `setup()`:
 
 ```lua
 require("sase").setup({
   complete = {
     keymap = true,
-    completion_backend = "auto", -- default: uses LSP when available, legacy picker otherwise
+    completion_backend = "auto", -- default: uses LSP when available, picker otherwise
   },
   lsp = {
     enabled = true, -- default
     -- cmd = { "sase", "lsp" },
-    -- allow_all_markdown = false, -- set true for legacy all-Markdown attachment
+    -- allow_all_markdown = false, -- set true for all-Markdown attachment
     -- native_completion = "auto", -- true, false, or "auto"
   },
 })
 ```
 
 Command resolution prefers `lsp.cmd`, then `SASE_XPROMPT_LSP_CMD`, then a verified `sase lsp`, then `sase-xprompt-lsp`.
-Set `lsp.allow_all_markdown = true` only if you want the legacy behavior where every Markdown buffer can attach to the
-xprompt LSP. The LSP client uses `.sase` or `.git` as the project root when available. The `#@` trigger and
+Set `lsp.allow_all_markdown = true` only if you want every Markdown buffer to attach to the xprompt LSP. The LSP client
+uses `.sase` or `.git` as the project root when available. The `#@` trigger and
 `:SaseXPrompts` picker commands remain picker-based browse surfaces. They keep using `sase xprompt list` until the LSP
 exposes a browse/catalog request, and file-history deletion keeps using `sase file-history delete`.
 
@@ -277,8 +275,8 @@ For troubleshooting, check Neovim's LSP log (`:lua print(vim.lsp.get_log_path())
 
 The plugin highlights and helps edit the `%{A | B}` alt fan-out shorthand (sase's preferred spelling for `%alt(A, B)`)
 in the same prompt-oriented buffers the LSP attaches to: `gitcommit`, `sase`, `sase_prompt`, and eligible `markdown`
-buffers (under canonical `sase/xprompts/`, legacy `xprompts/` / `.xprompts/` during the compatibility window, or
-matching SASE prompt temp files), honoring `allow_all_markdown`. Both features are on by default after `setup()` and
+buffers (under canonical `sase/xprompts/`, packaged `default_xprompts/`, or matching SASE prompt temp files), honoring
+`allow_all_markdown`. Both features are on by default after `setup()` and
 inherit the LSP filetype and `allow_all_markdown` settings.
 
 **Highlighting** marks each part of a fan-out with its own highlight group, so delimiters read differently from branch
@@ -369,7 +367,7 @@ Plug 'sase-org/sase-nvim'
 
 Most plugin files load automatically when Neovim starts:
 
-- `.sase` (and legacy `.gp`) filetype detection and syntax highlighting
+- `.sase` filetype detection and syntax highlighting
 - `#@` insert-mode xprompt picker trigger
 - `:SaseXPrompts`, `:SaseXPromptsRefresh`, and `:SaseFileHistoryRefresh`
 - YAML schema registration for `yamlls`
@@ -400,13 +398,16 @@ To force the picker-only fallback:
 require("sase").setup({
   complete = {
     keymap = true,
-    completion_backend = "legacy",
+    completion_backend = "picker",
   },
   lsp = {
     enabled = false,
   },
 })
 ```
+
+The old `completion_backend` value `"legacy"` is accepted as a compatibility alias for `"picker"`; new configs should
+use `"picker"`.
 
 ## Commands
 
@@ -420,7 +421,7 @@ require("sase").setup({
 
 ```
 ├── ftdetect/
-│   └── sase_gp.lua              # Filetype detection for .sase (and legacy .gp) files under .sase/projects/
+│   └── sase_project_spec.lua    # Filetype detection for .sase files under .sase/projects/
 ├── lua/
 │   ├── sase/
 │   │   ├── init.lua               # require("sase").setup entry point
@@ -429,7 +430,7 @@ require("sase").setup({
 │   │   ├── xprompt.lua            # #@ xprompt picker core
 │   │   └── complete/
 │   │       ├── _picker.lua      # shared insertion and insert-mode restore helpers
-│   │       ├── _token.lua       # legacy fallback token classification
+│   │       ├── _token.lua       # picker fallback token classification
 │   │       ├── file.lua         # fallback file-system picker
 │   │       ├── file_history.lua # fallback recent-file picker
 │   │       └── xprompt.lua      # fallback xprompt picker wrapper
@@ -440,7 +441,7 @@ require("sase").setup({
 │   ├── sase_xprompt.lua         # #@ trigger and xprompt commands
 │   └── sase_yamlls.lua          # YAML language server schema configuration
 └── syntax/
-    └── sase_gp.vim              # Syntax highlighting rules
+    └── sase_project_spec.vim    # Syntax highlighting rules
 ```
 
 ## License

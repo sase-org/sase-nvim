@@ -158,7 +158,7 @@ vim.fn.mkdir(root .. "/sase", "p")
 vim.fn.writefile({
   "ace:",
   "  snippets:",
-  "    cbi: '`<$1>`$0'",
+  "    nvim_placeholder_probe: '`<$1>`$0'",
 }, root .. "/sase/sase.yml")
 
 local prompt_path = root .. "/sase_prompt_placeholder_smoke.md"
@@ -219,19 +219,19 @@ if #empty_items ~= 0 then
   fail("the placeholder under the cursor was not excluded: " .. vim.inspect(empty_items))
 end
 
-local snippet_items = completion_items({ "cb" }, 0, 2)
-local cbi = find_item(snippet_items, "cbi")
-if not cbi then
-  fail("missing `cbi` snippet item: " .. vim.inspect(snippet_items))
+local snippet_items = completion_items({ "nvim_placeholder" }, 0, 16)
+local snippet = find_item(snippet_items, "nvim_placeholder_probe")
+if not snippet then
+  fail("missing `nvim_placeholder_probe` snippet item: " .. vim.inspect(snippet_items))
 end
-if cbi.kind ~= vim.lsp.protocol.CompletionItemKind.Snippet then
-  fail("`cbi` kind is not Snippet: " .. vim.inspect(cbi))
+if snippet.kind ~= vim.lsp.protocol.CompletionItemKind.Snippet then
+  fail("`nvim_placeholder_probe` kind is not Snippet: " .. vim.inspect(snippet))
 end
-if not cbi.textEdit or cbi.textEdit.newText ~= "`<$1>`$0" then
-  fail("`cbi` snippet text mismatch: " .. vim.inspect(cbi))
+if not snippet.textEdit or snippet.textEdit.newText ~= "`<$1>`$0" then
+  fail("`nvim_placeholder_probe` snippet text mismatch: " .. vim.inspect(snippet))
 end
-if not cbi.command or cbi.command.command ~= "editor.action.triggerSuggest" then
-  fail("`cbi` does not retrigger placeholder suggestions: " .. vim.inspect(cbi))
+if not snippet.command or snippet.command.command ~= "editor.action.triggerSuggest" then
+  fail("`nvim_placeholder_probe` does not retrigger placeholder suggestions: " .. vim.inspect(snippet))
 end
 
 local client = vim.lsp.get_client_by_id(client_id)
