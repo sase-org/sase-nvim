@@ -194,9 +194,12 @@ Manual smoke check (snippets):
 Manual smoke check (model shortcuts):
 
 1. Open an eligible prompt buffer and type `*la`; verify model alias rows such as `@large` appear and accepting one
-   inserts `%m:@large`.
-2. Type `**gpt`; verify concrete model rows appear, aliases stay out of the menu, and accepting one inserts `%m:<model>`.
+   through native completion inserts `%m:@large`.
+2. Type `**`; verify concrete model rows appear in server order, aliases stay out of the menu, and accepting a filtered
+   row such as `**gpt` inserts `%m:<model>`.
 3. Type a provider-qualified query such as `**codex/g`; verify rows are scoped to that provider.
+4. While the native menu is open, type `*`, then another `*`, then backspace; verify completion switches from aliases to
+   concrete models and back to aliases. Also invoke manual completion on an existing `**` query.
 
 The headless equivalent of this check lives in `tests/lsp_model_shortcut_smoke.lua`.
 

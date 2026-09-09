@@ -62,7 +62,7 @@ local function assert_star_trigger(client_id)
   fail("`*` is not advertised as a completion trigger character: " .. vim.inspect(triggers))
 end
 
-local function completion_items(line)
+local function completion_list(line)
   vim.api.nvim_buf_set_lines(0, 0, -1, false, { line })
   vim.api.nvim_win_set_cursor(0, { 1, #line })
   vim.cmd("redraw")
@@ -82,17 +82,31 @@ local function completion_items(line)
     end
     local result = response.result
     if result then
-      local is_list = vim.islist or vim.tbl_islist
-      if is_list(result) then
-        return result
-      end
-      if result.items then
-        return result.items
-      end
+      return result
     end
   end
 
-  return {}
+  return nil
+end
+
+local function completion_items(line)
+  local result = completion_list(line)
+  if not result then
+    return {}
+  end
+  local is_list = vim.islist or vim.tbl_islist
+  if is_list(result) then
+    return result
+  end
+  return result.items or {}
+end
+
+local function assert_incomplete_completion(line)
+  local result = completion_list(line)
+  if not result or result.isIncomplete ~= true then
+    fail("completion response is not an incomplete list for " .. vim.inspect(line) .. ": " .. vim.inspect(result))
+  end
+  return result.items or {}
 end
 
 local function find_item(items, label)
@@ -108,6 +122,13 @@ local function labels(items)
   return vim.tbl_map(function(item)
     return item.label
   end, items)
+end
+
+local function assert_labels(items, expected)
+  local actual = labels(items)
+  if not vim.deep_equal(actual, expected) then
+    fail(("completion labels mismatch\n  expected: %s\n  actual:   %s"):format(vim.inspect(expected), vim.inspect(actual)))
+  end
 end
 
 local function assert_has_item(items, label)
@@ -144,6 +165,93 @@ local function apply_item_for_line(line, label)
   return table.concat(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false), "\n")
 end
 
+local function set_line(line)
+  vim.cmd("stopinsert")
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, { line })
+  vim.api.nvim_win_set_cursor(0, { 1, #line })
+  vim.cmd("redraw")
+end
+
+local function native_item_label(item)
+  local completion_item = item.user_data
+    and item.user_data.nvim
+    and item.user_data.nvim.lsp
+    and item.user_data.nvim.lsp.completion_item
+  if completion_item and completion_item.label then
+    return completion_item.label
+  end
+  if item.abbr and item.abbr ~= "" then
+    return item.abbr
+  end
+  return item.word
+end
+
+local function native_completion_items(client_id, line)
+  local result = completion_list(line)
+  if not result then
+    return {}
+  end
+  if result.isIncomplete ~= true then
+    fail("native conversion got a complete model shortcut list for " .. vim.inspect(line) .. ": " .. vim.inspect(result))
+  end
+  local line_to_cursor = line:sub(1, #line)
+  local word_boundary = vim.fn.match(line_to_cursor, "\\k*$")
+  return vim.lsp.completion._convert_results(
+    line,
+    0,
+    #line,
+    client_id,
+    word_boundary,
+    nil,
+    result,
+    "utf-16"
+  )
+end
+
+local function native_labels(items)
+  return vim.tbl_map(native_item_label, items)
+end
+
+local function assert_native_completion(client_id, line, expected_labels)
+  local items = native_completion_items(client_id, line)
+  local actual = native_labels(items)
+  if not vim.deep_equal(actual, expected_labels) then
+    fail(("native completion labels mismatch for %s\n  expected: %s\n  actual:   %s\n  items:    %s"):format(
+      vim.inspect(line),
+      vim.inspect(expected_labels),
+      vim.inspect(actual),
+      vim.inspect(items)
+    ))
+  end
+  return items
+end
+
+local function find_native_item(items, label)
+  for _, item in ipairs(items) do
+    if native_item_label(item) == label then
+      return item
+    end
+  end
+  return nil
+end
+
+local function assert_native_expansion(client_id, line, label, expected_word)
+  local items = native_completion_items(client_id, line)
+  local item = find_native_item(items, label)
+  if not item then
+    fail("native completion did not include " .. vim.inspect(label) .. " for " .. vim.inspect(line) .. ": " .. vim.inspect(items))
+  end
+  local word = item.word
+  if word ~= expected_word then
+    fail(("native completion word mismatch for %s\n  expected: %s\n  actual:   %s\n  item:     %s"):format(
+      vim.inspect(line),
+      vim.inspect(expected_word),
+      vim.inspect(word),
+      vim.inspect(item)
+    ))
+  end
+end
+
 local root = vim.fn.tempname()
 vim.fn.mkdir(root .. "/.sase", "p")
 
@@ -152,10 +260,10 @@ vim.fn.writefile({
   '{"schema_version":1,"entries":['
     .. '{"value":"@large","display":"@large","description":"Large alias","kind":"user_alias","aliases":["large"],"alias_kind":"user","target_provider":"claude","target_model":"opus","target_effort":"high","provenance":"configured"},'
     .. '{"value":"@launch","display":"@launch","description":"Launch alias","kind":"implicit_alias","aliases":["launch"],"alias_kind":"role","target_provider":"codex","target_model":"gpt-5","provenance":"implicit"},'
-    .. '{"value":"large-model","display":"large-model","description":"Concrete model","kind":"model","provider":"codex","aliases":["large"]},'
-    .. '{"value":"claude-fable-5","display":"claude-fable-5","description":"Claude (fable)","kind":"model","provider":"claude","aliases":["fable"]},'
-    .. '{"value":"claude/","display":"claude/","description":"Claude","kind":"provider","provider":"claude"},'
-    .. '{"value":"codex/","display":"codex/","description":"Codex","kind":"provider","provider":"codex"}'
+    .. '{"value":"large-model","display":"large-model","description":"Concrete model","kind":"model","provider":"codex","provider_display":"Codex","aliases":["large"]},'
+    .. '{"value":"claude-fable-5","display":"claude-fable-5","description":"Claude (fable)","kind":"model","provider":"claude","provider_display":"Claude","aliases":["fable"]},'
+    .. '{"value":"claude/","display":"claude/","description":"Claude","kind":"provider","provider":"claude","provider_display":"Claude"},'
+    .. '{"value":"codex/","display":"codex/","description":"Codex","kind":"provider","provider":"codex","provider_display":"Codex"}'
     .. "]}",
 }, catalog_path)
 vim.env.SASE_XPROMPT_MODEL_CATALOG = catalog_path
@@ -164,10 +272,11 @@ local prompt_path = root .. "/sase_prompt_model_shortcut_smoke.md"
 vim.fn.writefile({ "" }, prompt_path)
 
 vim.cmd("cd " .. vim.fn.fnameescape(root))
+vim.o.completeopt = "menu,menuone,noinsert"
 
 require("sase").setup({
   complete = { keymap = false },
-  lsp = { cmd = resolve_cmd(), filetypes = { "markdown" } },
+  lsp = { cmd = resolve_cmd(), filetypes = { "markdown" }, native_completion = true },
 })
 
 vim.cmd("edit " .. vim.fn.fnameescape(prompt_path))
@@ -180,14 +289,21 @@ end
 wait_for_client(client_id)
 assert_star_trigger(client_id)
 
-local alias_items = completion_items("*la")
+local alias_items = assert_incomplete_completion("*la")
 local alias = assert_has_item(alias_items, "@large")
 assert_text_edit(alias, "*la", "%m:@large ")
 if find_item(alias_items, "large-model") then
   fail("*alias completion included concrete model rows: " .. vim.inspect(alias_items))
 end
 
-local model_items = completion_items("**fa")
+local bare_model_items = assert_incomplete_completion("**")
+assert_labels(bare_model_items, { "large-model", "claude-fable-5" })
+
+local canonical_model_items = assert_incomplete_completion("**la")
+assert_labels(canonical_model_items, { "large-model" })
+
+local model_items = assert_incomplete_completion("**fa")
+assert_labels(model_items, { "claude-fable-5" })
 local model = assert_has_item(model_items, "claude-fable-5")
 assert_text_edit(model, "**fa", "%m:claude-fable-5 ")
 if find_item(model_items, "@large") then
@@ -198,19 +314,37 @@ if not model_detail:find("%m:claude-fable-5", 1, true) then
   fail("model labelDetails did not advertise expansion: " .. vim.inspect(model.labelDetails))
 end
 
-local scoped_items = completion_items("**codex/la")
+local scoped_items = assert_incomplete_completion("**codex/la")
+assert_labels(scoped_items, { "codex/large-model" })
 local scoped = assert_has_item(scoped_items, "codex/large-model")
 assert_text_edit(scoped, "**codex/la", "%m:codex/large-model ")
 
+local scoped_hint_items = assert_incomplete_completion("Use **claude/fa")
+assert_labels(scoped_hint_items, { "claude/claude-fable-5" })
+local scoped_hint = assert_has_item(scoped_hint_items, "claude/claude-fable-5")
+assert_text_edit(scoped_hint, "**claude/fa", "%m:claude/claude-fable-5 ")
+
+assert_native_expansion(client_id, "Use *la", "@large", "%m:@large ")
 local applied_alias = apply_item_for_line("Use *la", "@large")
 if applied_alias ~= "Use %m:@large " then
   fail("*alias text edit did not apply to live buffer: " .. vim.inspect(applied_alias))
 end
 
+assert_native_expansion(client_id, "Use **la", "large-model", "%m:large-model ")
 local applied_model = apply_item_for_line("Use **la", "large-model")
 if applied_model ~= "Use %m:large-model " then
   fail("**model text edit did not apply to live buffer: " .. vim.inspect(applied_model))
 end
+
+set_line("**fa")
+if not require("sase.lsp").complete() then
+  fail("manual native completion refused for **fa")
+end
+assert_native_completion(client_id, "**fa", { "claude-fable-5" })
+
+assert_native_completion(client_id, "*", { "@large", "@launch" })
+assert_native_completion(client_id, "**", { "large-model", "claude-fable-5" })
+assert_native_completion(client_id, "*", { "@large", "@launch" })
 
 local client = vim.lsp.get_client_by_id(client_id)
 if client and client.stop then
