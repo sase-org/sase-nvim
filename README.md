@@ -136,6 +136,13 @@ items supplied by the server. Snippets come from the same Python helper-backed r
 including `ace.snippets` and xprompts marked with `snippet: true` or `snippet: <trigger>`. The Lua plugin does not shell
 out to load that registry.
 
+#### Model shortcuts
+
+The server advertises `*` as a completion trigger character. `*alias` completion lists model alias rows and rewrites the
+token to `%m:@alias`; `**model` completion lists concrete model rows and rewrites the token to `%m:model`. Native
+`vim.lsp.completion` and `nvim-cmp` both receive the same `filterText`, `labelDetails`, and `textEdit` fields from the
+server, so the plugin does not carry a Lua-side model parser.
+
 #### Placeholder completion
 
 Typing `<` inside a prompt offers placeholder texts already used elsewhere in the current buffer. Continue typing to
@@ -183,6 +190,15 @@ Manual smoke check (snippets):
 1. Add a local `sase/sase.yml` with an `ace.snippets` entry and an xprompt with `snippet: true`.
 2. Open an eligible Markdown or SASE prompt buffer under that project and type the snippet trigger prefix.
 3. Invoke LSP completion, accept the snippet item, and verify Neovim expands the `$1`/`$0` tabstops.
+
+Manual smoke check (model shortcuts):
+
+1. Open an eligible prompt buffer and type `*la`; verify model alias rows such as `@large` appear and accepting one
+   inserts `%m:@large`.
+2. Type `**gpt`; verify concrete model rows appear, aliases stay out of the menu, and accepting one inserts `%m:<model>`.
+3. Type a provider-qualified query such as `**codex/g`; verify rows are scoped to that provider.
+
+The headless equivalent of this check lives in `tests/lsp_model_shortcut_smoke.lua`.
 
 Manual smoke check (placeholder completion):
 
