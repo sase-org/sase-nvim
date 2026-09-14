@@ -157,16 +157,16 @@ if not client_id then
 end
 wait_for_client(client_id)
 
-local directive_items = completion_items("%")
-for _, label in ipairs({ "%queue", "%q:...", "%queue(runners=..., priority=...)" }) do
+local directive_items = completion_items("%q")
+for _, label in ipairs({ "%queue", "%q:...", "%queue(capacity=..., priority=...)" }) do
   if not find_label(directive_items, label) then
     fail("missing queue directive completion label " .. label .. ": " .. vim.inspect(directive_items))
   end
 end
 
-assert_has_insertions("%queue(", { "p=", "priority=", "runners=", "0", "1" })
+assert_has_insertions("%queue(", { "capacity=", "p=", "priority=", "w=", "weight=", "1", "100" })
 
-local q_colon_items = assert_has_insertions("%q:", { "0", "1" })
+local q_colon_items = assert_has_insertions("%q:", { "1", "100" })
 local applied = apply_item(find_new_text(q_colon_items, "1"))
 if applied ~= "%q:1" then
   fail("queue alias text edit did not apply to live buffer: " .. vim.inspect(applied))
@@ -174,7 +174,7 @@ end
 
 local wait_items = completion_items("%wait(")
 local wait_insertions = insertions(wait_items)
-for _, forbidden in ipairs({ "p=", "priority=", "runners=" }) do
+for _, forbidden in ipairs({ "capacity=", "p=", "priority=", "runners=", "w=", "weight=" }) do
   if wait_insertions[forbidden] then
     fail("%wait( advertised queue field " .. forbidden .. ": " .. vim.inspect(wait_items))
   end

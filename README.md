@@ -143,6 +143,18 @@ token to `%m:@alias`; `**model` completion lists concrete model rows and rewrite
 `vim.lsp.completion` and `nvim-cmp` both receive the same `filterText`, `labelDetails`, and `textEdit` fields from the
 server, so the plugin does not carry a Lua-side model parser.
 
+#### Argument colon conversion
+
+When the attached SASE server supports `textDocument/onTypeFormatting`, this plugin enables Neovim's native
+`vim.lsp.on_type_formatting` for that client only. Typing `(` immediately after an argument-opening colon removes the
+colon for xprompt/workflow references and supported directives such as `%q:`, `%w:`, and `%m:`. With an editor pairing
+plugin enabled, `%q:` becomes `%q()` with the cursor between the parentheses; without pairing, Neovim inserts the typed
+`(` and the LSP deletes only the colon.
+
+This feature requires a Neovim runtime that provides `vim.lsp.on_type_formatting.enable()` and a SASE LSP new enough to
+advertise `documentOnTypeFormattingProvider`. Older clients still attach and keep completion, definition, diagnostics,
+and highlighting, but they will not perform this typing-time conversion.
+
 #### Placeholder completion
 
 Typing `<` inside a prompt offers placeholder texts already used elsewhere in the current buffer. Continue typing to
@@ -351,6 +363,8 @@ is highlighted and separator-edited.
 - `sase` on `PATH` for picker fallback, file-history deletion, schema discovery, and the default LSP wrapper — install
   it with `uv tool install sase` (see the [SASE install guide](https://github.com/sase-org/sase/blob/master/INSTALL.md))
 - `sase lsp` support or a standalone `sase-xprompt-lsp` binary for LSP-backed completion
+- Optional: Neovim with `vim.lsp.on_type_formatting.enable()` plus an editor pairing plugin for the `%q:` → `%q()`
+  typing shortcut. Without pairing, the LSP still deletes only the colon.
 - Optional: `nvim-telescope/telescope.nvim` for the richer picker UI. Without Telescope, pickers fall back to
   `vim.ui.select`.
 - Optional: `yamlls` / `yaml-language-server` if you want automatic sase YAML schema associations.

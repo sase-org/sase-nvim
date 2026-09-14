@@ -270,6 +270,25 @@ local function enable_completion(client, bufnr)
   pcall(vim.lsp.completion.enable, true, client.id, bufnr, { autotrigger = config.autotrigger ~= false })
 end
 
+local function enable_on_type_formatting(client)
+  if client.name ~= CLIENT_NAME then
+    return
+  end
+  if not (vim.lsp.on_type_formatting and type(vim.lsp.on_type_formatting.enable) == "function") then
+    return
+  end
+  local supports = client.supports_method
+  if supports and not client:supports_method("textDocument/onTypeFormatting") then
+    return
+  end
+  pcall(vim.lsp.on_type_formatting.enable, true, { client_id = client.id })
+end
+
+local function on_attach(client, bufnr)
+  enable_completion(client, bufnr)
+  enable_on_type_formatting(client)
+end
+
 function M.start(bufnr)
   bufnr = bufnr or 0
   if not config.enabled or not M.supports_buffer(bufnr) then
@@ -293,7 +312,7 @@ function M.start(bufnr)
     init_options = {
       allow_all_markdown = config.allow_all_markdown == true,
     },
-    on_attach = enable_completion,
+    on_attach = on_attach,
   }, { bufnr = bufnr, silent = true })
 end
 
@@ -360,5 +379,6 @@ end
 
 M._is_supported_markdown_path = is_supported_markdown_path
 M._supports_filetype_path = supports_filetype_path
+M._enable_on_type_formatting = enable_on_type_formatting
 
 return M

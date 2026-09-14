@@ -207,24 +207,34 @@ same(captured_config.handlers, nil, "definition uses standard lsp handlers")
 same(captured_opts, { bufnr = 0, silent = true }, "lsp start opts")
 
 local original_completion = vim.lsp.completion
+local original_on_type_formatting = vim.lsp.on_type_formatting
 local enable_calls = {}
+local on_type_calls = {}
 vim.lsp.completion = {
   enable = function(...)
     table.insert(enable_calls, { ... })
+  end,
+}
+vim.lsp.on_type_formatting = {
+  enable = function(...)
+    table.insert(on_type_calls, { ... })
   end,
 }
 
 captured_config.on_attach({
   id = 7,
   name = "sase-xprompt-lsp",
-  supports_method = function()
-    return true
+  supports_method = function(_, method)
+    return method == "textDocument/completion" or method == "textDocument/onTypeFormatting"
   end,
 }, 0)
 same(#enable_calls, 1, "native completion enabled when requested")
 same(enable_calls[1], { true, 7, 0, { autotrigger = true } }, "native completion enable args")
+same(#on_type_calls, 1, "on-type formatting enabled when server supports it")
+same(on_type_calls[1], { true, { client_id = 7 } }, "on-type formatting enable args")
 
 enable_calls = {}
+on_type_calls = {}
 vim.lsp.start = function(start_config, start_opts)
   captured_config = start_config
   captured_opts = start_opts
@@ -238,12 +248,46 @@ vim.lsp.start = original_start
 captured_config.on_attach({
   id = 8,
   name = "sase-xprompt-lsp",
-  supports_method = function()
-    return true
+  supports_method = function(_, method)
+    return method == "textDocument/completion" or method == "textDocument/onTypeFormatting"
   end,
 }, 0)
 same(#enable_calls, 0, "native completion skipped when disabled")
+same(#on_type_calls, 1, "on-type formatting still runs when native completion is disabled")
+
+on_type_calls = {}
+lsp._enable_on_type_formatting({
+  id = 9,
+  name = "other-lsp",
+  supports_method = function()
+    return true
+  end,
+})
+same(#on_type_calls, 0, "on-type formatting ignores other clients")
+
+lsp._enable_on_type_formatting({
+  id = 10,
+  name = "sase-xprompt-lsp",
+  supports_method = function(_, method)
+    return method ~= "textDocument/onTypeFormatting"
+  end,
+})
+same(#on_type_calls, 0, "on-type formatting requires server capability")
+
+vim.lsp.on_type_formatting = nil
+local ok, err = pcall(function()
+  lsp._enable_on_type_formatting({
+    id = 11,
+    name = "sase-xprompt-lsp",
+    supports_method = function()
+      return true
+    end,
+  })
+end)
+same(ok, true, "missing on-type formatting API is tolerated")
+same(err, nil, "missing on-type formatting API has no error")
 vim.lsp.completion = original_completion
+vim.lsp.on_type_formatting = original_on_type_formatting
 
 require("sase").setup({
   complete = { keymap = false, completion_backend = "picker" },
