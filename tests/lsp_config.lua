@@ -3,53 +3,58 @@ package.path = vim.fn.getcwd() .. "/lua/?.lua;" .. vim.fn.getcwd() .. "/lua/?/in
 local lsp = require("sase.lsp")
 
 local function same(actual, expected, label)
-  if vim.inspect(actual) ~= vim.inspect(expected) then
-    error(string.format("%s: expected %s, got %s", label, vim.inspect(expected), vim.inspect(actual)))
-  end
+	if vim.inspect(actual) ~= vim.inspect(expected) then
+		error(string.format("%s: expected %s, got %s", label, vim.inspect(expected), vim.inspect(actual)))
+	end
 end
 
 local function executable(names)
-  return function(name)
-    return names[name] == true
-  end
+	return function(name)
+		return names[name] == true
+	end
 end
 
 local function available(value)
-  return function()
-    return value
-  end
+	return function()
+		return value
+	end
 end
 
 same(
-  lsp._resolve_cmd({ cmd = { "custom-lsp", "--stdio" } }, {}, executable({}), available(false)),
-  { "custom-lsp", "--stdio" },
-  "explicit table cmd"
+	lsp._resolve_cmd({ cmd = { "custom-lsp", "--stdio" } }, {}, executable({}), available(false)),
+	{ "custom-lsp", "--stdio" },
+	"explicit table cmd"
 )
 same(
-  lsp._resolve_cmd({ cmd = "custom-lsp --stdio" }, {}, executable({}), available(false)),
-  { "custom-lsp", "--stdio" },
-  "explicit string cmd"
+	lsp._resolve_cmd({ cmd = "custom-lsp --stdio" }, {}, executable({}), available(false)),
+	{ "custom-lsp", "--stdio" },
+	"explicit string cmd"
 )
 same(
-  lsp._resolve_cmd({}, { SASE_XPROMPT_LSP_CMD = "cargo run -p sase_xprompt_lsp --" }, executable({}), available(false)),
-  { "cargo", "run", "-p", "sase_xprompt_lsp", "--" },
-  "env cmd"
+	lsp._resolve_cmd(
+		{},
+		{ SASE_XPROMPT_LSP_CMD = "cargo run -p sase_xprompt_lsp --" },
+		executable({}),
+		available(false)
+	),
+	{ "cargo", "run", "-p", "sase_xprompt_lsp", "--" },
+	"env cmd"
 )
 same(lsp._resolve_cmd({}, {}, executable({ sase = true }), available(true)), { "sase", "lsp" }, "sase wrapper cmd")
 same(
-  lsp._resolve_cmd({}, {}, executable({ sase = true, ["sase-xprompt-lsp"] = true }), available(false)),
-  { "sase-xprompt-lsp" },
-  "old sase falls through to standalone binary"
+	lsp._resolve_cmd({}, {}, executable({ sase = true, ["sase-xprompt-lsp"] = true }), available(false)),
+	{ "sase-xprompt-lsp" },
+	"old sase falls through to standalone binary"
 )
 same(
-  lsp._resolve_cmd({}, {}, executable({ sase = true }), available(false)),
-  nil,
-  "old sase without standalone binary is missing cmd"
+	lsp._resolve_cmd({}, {}, executable({ sase = true }), available(false)),
+	nil,
+	"old sase without standalone binary is missing cmd"
 )
 same(
-  lsp._resolve_cmd({}, {}, executable({ ["sase-xprompt-lsp"] = true }), available(false)),
-  { "sase-xprompt-lsp" },
-  "standalone binary cmd"
+	lsp._resolve_cmd({}, {}, executable({ ["sase-xprompt-lsp"] = true }), available(false)),
+	{ "sase-xprompt-lsp" },
+	"standalone binary cmd"
 )
 same(lsp._resolve_cmd({}, {}, executable({}), available(false)), nil, "missing cmd")
 
@@ -58,64 +63,68 @@ same(lsp._native_completion_enabled(true, true), true, "native completion forced
 same(lsp._native_completion_enabled("auto", false), true, "native completion auto without cmp")
 same(lsp._native_completion_enabled("auto", true), false, "native completion auto skips cmp")
 same(
-  lsp._has_cmp_completion(function()
-    return nil
-  end, {}),
-  false,
-  "cmp absent"
+	lsp._has_cmp_completion(function()
+		return nil
+	end, {}),
+	false,
+	"cmp absent"
 )
 same(
-  lsp._has_cmp_completion(function()
-    return {}
-  end, {}),
-  true,
-  "cmp_nvim_lsp module detectable"
+	lsp._has_cmp_completion(function()
+		return {}
+	end, {}),
+	true,
+	"cmp_nvim_lsp module detectable"
 )
 same(
-  lsp._has_cmp_completion(function()
-    return nil
-  end, { cmp = true }),
-  true,
-  "loaded cmp detectable"
+	lsp._has_cmp_completion(function()
+		return nil
+	end, { cmp = true }),
+	true,
+	"loaded cmp detectable"
 )
 same(
-  lsp._has_cmp_completion(function()
-    return nil
-  end, { cmp_nvim_lsp = true }),
-  true,
-  "loaded cmp_nvim_lsp detectable"
+	lsp._has_cmp_completion(function()
+		return nil
+	end, { cmp_nvim_lsp = true }),
+	true,
+	"loaded cmp_nvim_lsp detectable"
 )
 
 local cmp_capabilities = lsp._make_capabilities(function(name)
-  if name ~= "cmp_nvim_lsp" then
-    error("unexpected module lookup: " .. name)
-  end
-  return {
-    default_capabilities = function(capabilities)
-      capabilities.textDocument.completion.completionItem.resolveSupport = { properties = { "detail" } }
-      return capabilities
-    end,
-  }
+	if name ~= "cmp_nvim_lsp" then
+		error("unexpected module lookup: " .. name)
+	end
+	return {
+		default_capabilities = function(capabilities)
+			capabilities.textDocument.completion.completionItem.resolveSupport = { properties = { "detail" } }
+			return capabilities
+		end,
+	}
 end)
 same(
-  cmp_capabilities.textDocument.completion.completionItem.resolveSupport,
-  { properties = { "detail" } },
-  "cmp capability shape is used when available"
+	cmp_capabilities.textDocument.completion.completionItem.resolveSupport,
+	{ properties = { "detail" } },
+	"cmp capability shape is used when available"
 )
 same(
-  cmp_capabilities.textDocument.completion.completionItem.snippetSupport,
-  true,
-  "cmp capabilities preserve snippet support"
+	cmp_capabilities.textDocument.completion.completionItem.snippetSupport,
+	true,
+	"cmp capabilities preserve snippet support"
 )
 
 require("sase").setup({
-  complete = { keymap = false },
-  lsp = { cmd = { "fake-lsp" }, filetypes = { "markdown" } },
+	complete = { keymap = false },
+	lsp = { cmd = { "fake-lsp" }, filetypes = { "markdown" } },
 })
 
 same(require("sase.complete")._config().completion_backend, "auto", "complete backend defaults to auto")
 same(require("sase.complete")._normalize_completion_backend("picker"), "picker", "picker backend is canonical")
-same(require("sase.complete")._normalize_completion_backend("leg" .. "acy"), "picker", "old backend value aliases to picker")
+same(
+	require("sase.complete")._normalize_completion_backend("leg" .. "acy"),
+	"picker",
+	"old backend value aliases to picker"
+)
 same(lsp._config().enabled, true, "lsp enabled")
 same(lsp._config().cmd, { "fake-lsp" }, "lsp cmd merged")
 same(lsp._config().filetypes, { "markdown" }, "lsp filetypes merged")
@@ -123,50 +132,54 @@ same(lsp._config().allow_all_markdown, false, "all-markdown attachment is off by
 same(lsp._config().native_completion, "auto", "native completion defaults to auto")
 
 same(
-  lsp._is_supported_markdown_path("/tmp/project/sase/xprompts/foo.md"),
-  true,
-  "canonical xprompts markdown is supported"
+	lsp._is_supported_markdown_path("/tmp/project/sase/xprompts/foo.md"),
+	true,
+	"canonical xprompts markdown is supported"
 )
 same(
-  lsp._is_supported_markdown_path("/tmp/project/xprompts/foo.md"),
-  false,
-  "legacy visible xprompts markdown is not auto-associated"
+	lsp._is_supported_markdown_path("/tmp/project/xprompts/foo.md"),
+	false,
+	"legacy visible xprompts markdown is not auto-associated"
 )
-same(lsp._is_supported_markdown_path("/tmp/project/.xprompts/foo.md"), false, ".xprompts markdown is not auto-associated")
 same(
-  lsp._is_supported_markdown_path("/tmp/project/src/sase/default_xprompts/research_swarm.md"),
-  true,
-  "default_xprompts markdown is supported"
+	lsp._is_supported_markdown_path("/tmp/project/.xprompts/foo.md"),
+	false,
+	".xprompts markdown is not auto-associated"
+)
+same(
+	lsp._is_supported_markdown_path("/tmp/project/src/sase/default_xprompts/research_swarm.md"),
+	true,
+	"default_xprompts markdown is supported"
 )
 same(lsp._is_supported_markdown_path("/tmp/sase_ace_prompt_abc.md"), true, "ace prompt temp markdown is supported")
 same(lsp._is_supported_markdown_path("/tmp/sase_prompt_abc.md"), true, "cli prompt temp markdown is supported")
 same(
-  lsp._is_supported_markdown_path("/tmp/project/sdd/research/202605/memory_system_prior_art.md"),
-  false,
-  "ordinary research markdown is unsupported"
+	lsp._is_supported_markdown_path("/tmp/project/sdd/research/202605/memory_system_prior_art.md"),
+	false,
+	"ordinary research markdown is unsupported"
 )
 same(
-  lsp._supports_filetype_path(
-    "markdown",
-    "/tmp/project/sdd/research/202605/memory_system_prior_art.md",
-    { filetypes = { "markdown" } }
-  ),
-  false,
-  "ordinary markdown is not supported by default"
+	lsp._supports_filetype_path(
+		"markdown",
+		"/tmp/project/sdd/research/202605/memory_system_prior_art.md",
+		{ filetypes = { "markdown" } }
+	),
+	false,
+	"ordinary markdown is not supported by default"
 )
 same(
-  lsp._supports_filetype_path(
-    "markdown",
-    "/tmp/project/sdd/research/202605/memory_system_prior_art.md",
-    { filetypes = { "markdown" }, allow_all_markdown = true }
-  ),
-  true,
-  "all-markdown opt-in broadens support"
+	lsp._supports_filetype_path(
+		"markdown",
+		"/tmp/project/sdd/research/202605/memory_system_prior_art.md",
+		{ filetypes = { "markdown" }, allow_all_markdown = true }
+	),
+	true,
+	"all-markdown opt-in broadens support"
 )
 same(
-  lsp._supports_filetype_path("sase_prompt", "", { filetypes = { "markdown", "sase_prompt" } }),
-  true,
-  "sase_prompt filetype support does not require a markdown path"
+	lsp._supports_filetype_path("sase_prompt", "", { filetypes = { "markdown", "sase_prompt" } }),
+	true,
+	"sase_prompt filetype support does not require a markdown path"
 )
 
 vim.api.nvim_buf_set_name(0, vim.fn.getcwd() .. "/sase/xprompts/current.md")
@@ -175,32 +188,32 @@ local original_start = vim.lsp.start
 local captured_config = nil
 local captured_opts = nil
 vim.lsp.start = function(start_config, start_opts)
-  captured_config = start_config
-  captured_opts = start_opts
-  return 123
+	captured_config = start_config
+	captured_opts = start_opts
+	return 123
 end
 
 require("sase").setup({
-  complete = { keymap = false },
-  lsp = { cmd = { "fake-lsp" }, filetypes = { "markdown" }, native_completion = true },
+	complete = { keymap = false },
+	lsp = { cmd = { "fake-lsp" }, filetypes = { "markdown" }, native_completion = true },
 })
 
 vim.lsp.start = original_start
 
 if type(vim.lsp.buf.definition) ~= "function" then
-  error("standard vim.lsp.buf.definition is unavailable")
+	error("standard vim.lsp.buf.definition is unavailable")
 end
 same(captured_config.name, "sase-xprompt-lsp", "lsp client name")
 same(captured_config.cmd, { "fake-lsp" }, "lsp start cmd")
 same(
-  captured_config.capabilities.textDocument.definition,
-  { dynamicRegistration = true, linkSupport = true },
-  "definition client capabilities preserved"
+	captured_config.capabilities.textDocument.definition,
+	{ dynamicRegistration = true, linkSupport = true },
+	"definition client capabilities preserved"
 )
 same(
-  captured_config.capabilities.textDocument.completion.completionItem.snippetSupport,
-  true,
-  "completion advertises snippet support"
+	captured_config.capabilities.textDocument.completion.completionItem.snippetSupport,
+	true,
+	"completion advertises snippet support"
 )
 same(captured_config.init_options, { allow_all_markdown = false }, "lsp init options default to narrowed markdown")
 same(captured_config.handlers, nil, "definition uses standard lsp handlers")
@@ -211,22 +224,22 @@ local original_on_type_formatting = vim.lsp.on_type_formatting
 local enable_calls = {}
 local on_type_calls = {}
 vim.lsp.completion = {
-  enable = function(...)
-    table.insert(enable_calls, { ... })
-  end,
+	enable = function(...)
+		table.insert(enable_calls, { ... })
+	end,
 }
 vim.lsp.on_type_formatting = {
-  enable = function(...)
-    table.insert(on_type_calls, { ... })
-  end,
+	enable = function(...)
+		table.insert(on_type_calls, { ... })
+	end,
 }
 
 captured_config.on_attach({
-  id = 7,
-  name = "sase-xprompt-lsp",
-  supports_method = function(_, method)
-    return method == "textDocument/completion" or method == "textDocument/onTypeFormatting"
-  end,
+	id = 7,
+	name = "sase-xprompt-lsp",
+	supports_method = function(_, method)
+		return method == "textDocument/completion" or method == "textDocument/onTypeFormatting"
+	end,
 }, 0)
 same(#enable_calls, 1, "native completion enabled when requested")
 same(enable_calls[1], { true, 7, 0, { autotrigger = true } }, "native completion enable args")
@@ -236,53 +249,53 @@ same(on_type_calls[1], { true, { client_id = 7 } }, "on-type formatting enable a
 enable_calls = {}
 on_type_calls = {}
 vim.lsp.start = function(start_config, start_opts)
-  captured_config = start_config
-  captured_opts = start_opts
-  return 123
+	captured_config = start_config
+	captured_opts = start_opts
+	return 123
 end
 require("sase").setup({
-  complete = { keymap = false },
-  lsp = { cmd = { "fake-lsp" }, filetypes = { "markdown" }, native_completion = false },
+	complete = { keymap = false },
+	lsp = { cmd = { "fake-lsp" }, filetypes = { "markdown" }, native_completion = false },
 })
 vim.lsp.start = original_start
 captured_config.on_attach({
-  id = 8,
-  name = "sase-xprompt-lsp",
-  supports_method = function(_, method)
-    return method == "textDocument/completion" or method == "textDocument/onTypeFormatting"
-  end,
+	id = 8,
+	name = "sase-xprompt-lsp",
+	supports_method = function(_, method)
+		return method == "textDocument/completion" or method == "textDocument/onTypeFormatting"
+	end,
 }, 0)
 same(#enable_calls, 0, "native completion skipped when disabled")
 same(#on_type_calls, 1, "on-type formatting still runs when native completion is disabled")
 
 on_type_calls = {}
 lsp._enable_on_type_formatting({
-  id = 9,
-  name = "other-lsp",
-  supports_method = function()
-    return true
-  end,
+	id = 9,
+	name = "other-lsp",
+	supports_method = function()
+		return true
+	end,
 })
 same(#on_type_calls, 0, "on-type formatting ignores other clients")
 
 lsp._enable_on_type_formatting({
-  id = 10,
-  name = "sase-xprompt-lsp",
-  supports_method = function(_, method)
-    return method ~= "textDocument/onTypeFormatting"
-  end,
+	id = 10,
+	name = "sase-xprompt-lsp",
+	supports_method = function(_, method)
+		return method ~= "textDocument/onTypeFormatting"
+	end,
 })
 same(#on_type_calls, 0, "on-type formatting requires server capability")
 
 vim.lsp.on_type_formatting = nil
 local ok, err = pcall(function()
-  lsp._enable_on_type_formatting({
-    id = 11,
-    name = "sase-xprompt-lsp",
-    supports_method = function()
-      return true
-    end,
-  })
+	lsp._enable_on_type_formatting({
+		id = 11,
+		name = "sase-xprompt-lsp",
+		supports_method = function()
+			return true
+		end,
+	})
 end)
 same(ok, true, "missing on-type formatting API is tolerated")
 same(err, nil, "missing on-type formatting API has no error")
@@ -290,8 +303,8 @@ vim.lsp.completion = original_completion
 vim.lsp.on_type_formatting = original_on_type_formatting
 
 require("sase").setup({
-  complete = { keymap = false, completion_backend = "picker" },
-  lsp = { enabled = false },
+	complete = { keymap = false, completion_backend = "picker" },
+	lsp = { enabled = false },
 })
 
 same(require("sase.complete")._config().completion_backend, "picker", "picker backend remains configurable")

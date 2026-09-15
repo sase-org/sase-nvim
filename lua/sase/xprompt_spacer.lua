@@ -22,19 +22,19 @@ local DEFAULT_FILETYPES = { "markdown", "gitcommit", "sase", "sase_prompt" }
 local GROUP = "SaseXPromptSpacer"
 
 local config = {
-  enabled = true,
-  filetypes = DEFAULT_FILETYPES,
-  allow_all_markdown = false,
+	enabled = true,
+	filetypes = DEFAULT_FILETYPES,
+	allow_all_markdown = false,
 }
 
 local attached = {}
 
 local function copy_list(values)
-  local copy = {}
-  for idx, value in ipairs(values or {}) do
-    copy[idx] = value
-  end
-  return copy
+	local copy = {}
+	for idx, value in ipairs(values or {}) do
+		copy[idx] = value
+	end
+	return copy
 end
 
 -- Offsets below are 0-indexed byte offsets into `line`, matching the cursor
@@ -49,19 +49,19 @@ end
 --- @param space_index integer  0-indexed position of the candidate spacer
 --- @return string|nil reference, integer|nil ref_start
 local function reference_before(line, space_index)
-  local prefix = line:sub(1, space_index) -- chars strictly before the spacer
-  local ref = prefix:match("#!?[%a_][%w_/]*$")
-  if not ref then
-    return nil
-  end
-  local ref_start = space_index - #ref -- 0-indexed start of the reference
-  if ref_start > 0 then
-    local before = line:sub(ref_start, ref_start) -- char before ref (1-indexed)
-    if before:match("[%w_/]") then
-      return nil
-    end
-  end
-  return ref, ref_start
+	local prefix = line:sub(1, space_index) -- chars strictly before the spacer
+	local ref = prefix:match("#!?[%a_][%w_/]*$")
+	if not ref then
+		return nil
+	end
+	local ref_start = space_index - #ref -- 0-indexed start of the reference
+	if ref_start > 0 then
+		local before = line:sub(ref_start, ref_start) -- char before ref (1-indexed)
+		if before:match("[%w_/]") then
+			return nil
+		end
+	end
+	return ref, ref_start
 end
 
 --- Plan the spacer deletion for an optional-only `:` rewrite at 0-indexed
@@ -79,28 +79,28 @@ end
 --- @param is_optional_only fun(reference: string): boolean
 --- @return { start: integer, stop: integer }|nil
 function M.plan_colon(line, offset, is_optional_only)
-  if offset < 1 then
-    return nil
-  end
-  local space_index = offset - 1 -- 0-indexed candidate spacer position
-  if line:sub(space_index + 1, space_index + 1) ~= " " then
-    return nil
-  end
-  local ref = reference_before(line, space_index)
-  if not ref or not is_optional_only(ref) then
-    return nil
-  end
-  return { start = space_index, stop = offset }
+	if offset < 1 then
+		return nil
+	end
+	local space_index = offset - 1 -- 0-indexed candidate spacer position
+	if line:sub(space_index + 1, space_index + 1) ~= " " then
+		return nil
+	end
+	local ref = reference_before(line, space_index)
+	if not ref or not is_optional_only(ref) then
+		return nil
+	end
+	return { start = space_index, stop = offset }
 end
 
 function M.supports_buffer(bufnr)
-  bufnr = bufnr or 0
-  if not vim.api.nvim_buf_is_valid(bufnr) then
-    return false
-  end
-  local ft = vim.bo[bufnr].filetype
-  local path = vim.api.nvim_buf_get_name(bufnr)
-  return require("sase.lsp")._supports_filetype_path(ft, path, config)
+	bufnr = bufnr or 0
+	if not vim.api.nvim_buf_is_valid(bufnr) then
+		return false
+	end
+	local ft = vim.bo[bufnr].filetype
+	local path = vim.api.nvim_buf_get_name(bufnr)
+	return require("sase.lsp")._supports_filetype_path(ft, path, config)
 end
 
 -- Delete the planned spacer range on row `row` (0-indexed). The typed `:` was
@@ -110,122 +110,122 @@ end
 -- at end-of-line, where normal-mode cursor clamping would otherwise forbid the
 -- final column (mirrors `xprompt.lua`'s `restore_insert_mode`).
 local function apply_plan(bufnr, row, plan)
-  if not vim.api.nvim_buf_is_valid(bufnr) then
-    return
-  end
-  vim.api.nvim_buf_set_text(bufnr, row, plan.start, row, plan.stop, { "" })
-  if vim.api.nvim_get_current_buf() ~= bufnr then
-    return
-  end
-  local target = plan.start + 1 -- 0-indexed column just after the colon
-  if target >= #vim.api.nvim_get_current_line() then
-    vim.cmd("startinsert!")
-  else
-    vim.api.nvim_win_set_cursor(0, { row + 1, target })
-  end
+	if not vim.api.nvim_buf_is_valid(bufnr) then
+		return
+	end
+	vim.api.nvim_buf_set_text(bufnr, row, plan.start, row, plan.stop, { "" })
+	if vim.api.nvim_get_current_buf() ~= bufnr then
+		return
+	end
+	local target = plan.start + 1 -- 0-indexed column just after the colon
+	if target >= #vim.api.nvim_get_current_line() then
+		vim.cmd("startinsert!")
+	else
+		vim.api.nvim_win_set_cursor(0, { row + 1, target })
+	end
 end
 
 -- `InsertCharPre` handler for the optional-only spacer `:` rewrite. The `:` is
 -- left to insert normally; when a plan applies the redundant spacer is deleted
 -- on the next tick (the buffer cannot be mutated from within `InsertCharPre`).
 local function on_insert_char(bufnr)
-  if vim.v.char ~= ":" then
-    return
-  end
+	if vim.v.char ~= ":" then
+		return
+	end
 
-  local line = vim.api.nvim_get_current_line()
-  local cursor = vim.api.nvim_win_get_cursor(0)
-  local row = cursor[1] - 1
-  local offset = cursor[2]
-  local plan = M.plan_colon(line, offset, require("sase.xprompt").reference_is_optional_only)
-  if not plan then
-    return
-  end
+	local line = vim.api.nvim_get_current_line()
+	local cursor = vim.api.nvim_win_get_cursor(0)
+	local row = cursor[1] - 1
+	local offset = cursor[2]
+	local plan = M.plan_colon(line, offset, require("sase.xprompt").reference_is_optional_only)
+	if not plan then
+		return
+	end
 
-  vim.schedule(function()
-    apply_plan(bufnr, row, plan)
-  end)
+	vim.schedule(function()
+		apply_plan(bufnr, row, plan)
+	end)
 end
 
 local function detach(bufnr)
-  if not attached[bufnr] then
-    return
-  end
-  attached[bufnr] = nil
-  pcall(vim.api.nvim_del_augroup_by_name, GROUP .. "Buf" .. bufnr)
+	if not attached[bufnr] then
+		return
+	end
+	attached[bufnr] = nil
+	pcall(vim.api.nvim_del_augroup_by_name, GROUP .. "Buf" .. bufnr)
 end
 
 function M.attach(bufnr)
-  bufnr = bufnr or 0
-  if not config.enabled or not vim.api.nvim_buf_is_valid(bufnr) then
-    return
-  end
-  if not M.supports_buffer(bufnr) then
-    detach(bufnr)
-    return
-  end
-  if attached[bufnr] then
-    return
-  end
-  attached[bufnr] = true
+	bufnr = bufnr or 0
+	if not config.enabled or not vim.api.nvim_buf_is_valid(bufnr) then
+		return
+	end
+	if not M.supports_buffer(bufnr) then
+		detach(bufnr)
+		return
+	end
+	if attached[bufnr] then
+		return
+	end
+	attached[bufnr] = true
 
-  local group = vim.api.nvim_create_augroup(GROUP .. "Buf" .. bufnr, { clear = true })
-  vim.api.nvim_create_autocmd("InsertCharPre", {
-    group = group,
-    buffer = bufnr,
-    callback = function()
-      on_insert_char(bufnr)
-    end,
-  })
-  vim.api.nvim_create_autocmd({ "BufUnload", "BufDelete", "BufWipeout" }, {
-    group = group,
-    buffer = bufnr,
-    callback = function()
-      detach(bufnr)
-    end,
-  })
+	local group = vim.api.nvim_create_augroup(GROUP .. "Buf" .. bufnr, { clear = true })
+	vim.api.nvim_create_autocmd("InsertCharPre", {
+		group = group,
+		buffer = bufnr,
+		callback = function()
+			on_insert_char(bufnr)
+		end,
+	})
+	vim.api.nvim_create_autocmd({ "BufUnload", "BufDelete", "BufWipeout" }, {
+		group = group,
+		buffer = bufnr,
+		callback = function()
+			detach(bufnr)
+		end,
+	})
 end
 
 function M.setup(opts)
-  opts = opts or {}
-  local lsp_config = require("sase.lsp")._config()
-  local filetypes = lsp_config.filetypes
-  if type(filetypes) ~= "table" or #filetypes == 0 then
-    filetypes = DEFAULT_FILETYPES
-  end
+	opts = opts or {}
+	local lsp_config = require("sase.lsp")._config()
+	local filetypes = lsp_config.filetypes
+	if type(filetypes) ~= "table" or #filetypes == 0 then
+		filetypes = DEFAULT_FILETYPES
+	end
 
-  config = vim.tbl_deep_extend("force", {
-    enabled = true,
-    filetypes = copy_list(filetypes),
-    allow_all_markdown = lsp_config.allow_all_markdown == true,
-  }, opts)
+	config = vim.tbl_deep_extend("force", {
+		enabled = true,
+		filetypes = copy_list(filetypes),
+		allow_all_markdown = lsp_config.allow_all_markdown == true,
+	}, opts)
 
-  for bufnr in pairs(attached) do
-    detach(bufnr)
-  end
+	for bufnr in pairs(attached) do
+		detach(bufnr)
+	end
 
-  local group = vim.api.nvim_create_augroup(GROUP, { clear = true })
-  if not config.enabled then
-    return
-  end
+	local group = vim.api.nvim_create_augroup(GROUP, { clear = true })
+	if not config.enabled then
+		return
+	end
 
-  vim.api.nvim_create_autocmd("FileType", {
-    group = group,
-    pattern = config.filetypes,
-    callback = function(args)
-      M.attach(args.buf)
-    end,
-  })
+	vim.api.nvim_create_autocmd("FileType", {
+		group = group,
+		pattern = config.filetypes,
+		callback = function(args)
+			M.attach(args.buf)
+		end,
+	})
 
-  for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
-    if vim.api.nvim_buf_is_loaded(bufnr) then
-      M.attach(bufnr)
-    end
-  end
+	for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
+		if vim.api.nvim_buf_is_loaded(bufnr) then
+			M.attach(bufnr)
+		end
+	end
 end
 
 function M._config()
-  return config
+	return config
 end
 
 return M

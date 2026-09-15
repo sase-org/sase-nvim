@@ -151,6 +151,11 @@ colon for xprompt/workflow references and supported directives such as `%q:`, `%
 plugin enabled, `%q:` becomes `%q()` with the cursor between the parentheses; without pairing, Neovim inserts the typed
 `(` and the LSP deletes only the colon.
 
+The same on-type path handles double-colon text shorthand. Typing `(` after `::` and any ASCII spaces inserts a full
+argument pair before the delimiter and keeps the authored text block delimiter after it: `#review:: body` becomes
+`#review():: body`, with the insert cursor inside `()`. Existing body text and spacing are preserved, and an adjacent
+editor-generated `)` is reused rather than duplicated.
+
 This feature requires a Neovim runtime that provides `vim.lsp.on_type_formatting.enable()` and a SASE LSP new enough to
 advertise `documentOnTypeFormattingProvider`. Older clients still attach and keep completion, definition, diagnostics,
 and highlighting, but they will not perform this typing-time conversion.

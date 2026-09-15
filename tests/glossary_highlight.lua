@@ -8,21 +8,21 @@ local glossary = require("sase.glossary_highlight")
 local failures = 0
 
 local function fail(message)
-  failures = failures + 1
-  io.stderr:write("FAIL: " .. message .. "\n")
+	failures = failures + 1
+	io.stderr:write("FAIL: " .. message .. "\n")
 end
 
 local function same(actual, expected, label)
-  if vim.inspect(actual) ~= vim.inspect(expected) then
-    fail(string.format("%s: expected %s, got %s", label, vim.inspect(expected), vim.inspect(actual)))
-  end
+	if vim.inspect(actual) ~= vim.inspect(expected) then
+		fail(string.format("%s: expected %s, got %s", label, vim.inspect(expected), vim.inspect(actual)))
+	end
 end
 
 local function get_hl(name)
-  if vim.api.nvim_get_hl then
-    return vim.api.nvim_get_hl(0, { name = name, link = false })
-  end
-  return vim.api.nvim_get_hl_by_name(name, true)
+	if vim.api.nvim_get_hl then
+		return vim.api.nvim_get_hl(0, { name = name, link = false })
+	end
+	return vim.api.nvim_get_hl_by_name(name, true)
 end
 
 -- --- default highlight group ---------------------------------------------
@@ -49,33 +49,33 @@ local original_highlight_token = vim.lsp.semantic_tokens.highlight_token
 local original_get_client_by_id = vim.lsp.get_client_by_id
 local highlighted = {}
 local clients = {
-  [7] = { name = "sase-xprompt-lsp" },
-  [8] = { name = "foreign-lsp" },
+	[7] = { name = "sase-xprompt-lsp" },
+	[8] = { name = "foreign-lsp" },
 }
 
 vim.lsp.semantic_tokens.highlight_token = function(token, bufnr, client_id, group)
-  highlighted[#highlighted + 1] = {
-    token = token,
-    bufnr = bufnr,
-    client_id = client_id,
-    group = group,
-  }
+	highlighted[#highlighted + 1] = {
+		token = token,
+		bufnr = bufnr,
+		client_id = client_id,
+		group = group,
+	}
 end
 
 vim.lsp.get_client_by_id = function(client_id)
-  return clients[client_id]
+	return clients[client_id]
 end
 
 local function reset_calls()
-  highlighted = {}
+	highlighted = {}
 end
 
 glossary.setup({ enabled = true })
 
 local glossary_token = { type = "type", line = 0, start_col = 4, end_col = 15 }
 glossary._on_lsp_token_update({
-  buf = 12,
-  data = { client_id = 7, token = glossary_token },
+	buf = 12,
+	data = { client_id = 7, token = glossary_token },
 })
 same(#highlighted, 1, "glossary type token from sase LSP is highlighted")
 same(highlighted[1].token, glossary_token, "highlighted token is forwarded")
@@ -85,34 +85,34 @@ same(highlighted[1].group, "SaseGlossaryTerm", "SaseGlossaryTerm group is applie
 
 reset_calls()
 glossary._on_lsp_token_update({
-  buf = 12,
-  data = { client_id = 8, token = { type = "type" } },
+	buf = 12,
+	data = { client_id = 8, token = { type = "type" } },
 })
 same(#highlighted, 0, "foreign LSP client is ignored")
 
 reset_calls()
 glossary._on_lsp_token_update({
-  buf = 12,
-  data = { client_id = 7, token = { type = "namespace" } },
+	buf = 12,
+	data = { client_id = 7, token = { type = "namespace" } },
 })
 same(#highlighted, 0, "foreign token type is ignored")
 
 reset_calls()
 glossary.setup({ enabled = false })
 glossary._on_lsp_token_update({
-  buf = 12,
-  data = { client_id = 7, token = { type = "type" } },
+	buf = 12,
+	data = { client_id = 7, token = { type = "type" } },
 })
 same(#highlighted, 0, "disabled glossary highlighting is ignored")
 
 -- --- top-level setup wiring ----------------------------------------------
 
 require("sase").setup({
-  lsp = { enabled = false },
-  glossary_highlight = { enabled = false },
-  alt_highlight = { enabled = false },
-  alt_editing = { enabled = false },
-  xprompt_spacer = { enabled = false },
+	lsp = { enabled = false },
+	glossary_highlight = { enabled = false },
+	alt_highlight = { enabled = false },
+	alt_editing = { enabled = false },
+	xprompt_spacer = { enabled = false },
 })
 same(glossary._config().enabled, false, "top-level setup forwards glossary_highlight opts")
 
@@ -120,7 +120,7 @@ vim.lsp.semantic_tokens.highlight_token = original_highlight_token
 vim.lsp.get_client_by_id = original_get_client_by_id
 
 if failures > 0 then
-  error(string.format("%d glossary_highlight test(s) failed", failures), 0)
+	error(string.format("%d glossary_highlight test(s) failed", failures), 0)
 end
 
 print("glossary_highlight: all tests passed")

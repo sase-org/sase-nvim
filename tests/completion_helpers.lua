@@ -4,23 +4,23 @@ local token = require("sase.complete._token")
 local xprompt = require("sase.xprompt")
 
 local function eq(actual, expected, label)
-  if actual ~= expected then
-    error(string.format("%s: expected %s, got %s", label, vim.inspect(expected), vim.inspect(actual)))
-  end
+	if actual ~= expected then
+		error(string.format("%s: expected %s, got %s", label, vim.inspect(expected), vim.inspect(actual)))
+	end
 end
 
 local function contains(text, needle, label)
-  if not text:find(needle, 1, true) then
-    error(string.format("%s: expected %s to contain %s", label, vim.inspect(text), vim.inspect(needle)))
-  end
+	if not text:find(needle, 1, true) then
+		error(string.format("%s: expected %s to contain %s", label, vim.inspect(text), vim.inspect(needle)))
+	end
 end
 
 local function assert_no_newlines(lines, label)
-  for index, line in ipairs(lines) do
-    if line:find("\n", 1, true) or line:find("\r", 1, true) then
-      error(string.format("%s: line %d contains a newline: %s", label, index, vim.inspect(line)))
-    end
-  end
+	for index, line in ipairs(lines) do
+		if line:find("\n", 1, true) or line:find("\r", 1, true) then
+			error(string.format("%s: line %d contains a newline: %s", label, index, vim.inspect(line)))
+		end
+	end
 end
 
 eq(token.is_slash_skill_like("/"), true, "bare slash is slash-skill-like")
@@ -32,33 +32,33 @@ eq(token.classify("/sase_plan"), "xprompt", "slash skill classifies as xprompt")
 eq(token.classify("/tmp/foo"), "file", "absolute path remains file")
 
 local items = {
-  {
-    name = "sase_plan",
-    type = "xprompt",
-    kind = "xprompt",
-    insertion = "#sase_plan",
-    is_skill = true,
-    inputs = {},
-    preview = "Plan",
-  },
-  {
-    name = "sample",
-    type = "xprompt",
-    kind = "xprompt",
-    insertion = "#sample",
-    is_skill = false,
-    inputs = {},
-    preview = "Sample",
-  },
-  {
-    name = "sync",
-    type = "workflow",
-    kind = "standalone_workflow",
-    insertion = "#!sync",
-    is_skill = false,
-    inputs = {},
-    preview = "Sync",
-  },
+	{
+		name = "sase_plan",
+		type = "xprompt",
+		kind = "xprompt",
+		insertion = "#sase_plan",
+		is_skill = true,
+		inputs = {},
+		preview = "Plan",
+	},
+	{
+		name = "sample",
+		type = "xprompt",
+		kind = "xprompt",
+		insertion = "#sample",
+		is_skill = false,
+		inputs = {},
+		preview = "Sample",
+	},
+	{
+		name = "sync",
+		type = "workflow",
+		kind = "standalone_workflow",
+		insertion = "#!sync",
+		is_skill = false,
+		inputs = {},
+		preview = "Sync",
+	},
 }
 
 local slash = xprompt._filter_items_for_token(items, { text = "/sas" })
@@ -85,17 +85,17 @@ local described_items = vim.json.decode(table.concat(vim.fn.readfile(fixture_pat
 local described = described_items[1]
 
 eq(
-  xprompt._format_entry(described),
-  "  #review(diff, focus?) - Review a diff and identify follow-up work.",
-  "entry includes xprompt description"
+	xprompt._format_entry(described),
+	"  #review(diff, focus?) - Review a diff and identify follow-up work.",
+	"entry includes xprompt description"
 )
 eq(
-  xprompt._format_display(described),
-  "  #review\n"
-    .. "  Review a diff and identify follow-up work.\n"
-    .. "  diff - Diff file to review.\n"
-    .. "  focus=bugs - Scope word for the review.",
-  "display includes xprompt and input descriptions"
+	xprompt._format_display(described),
+	"  #review\n"
+		.. "  Review a diff and identify follow-up work.\n"
+		.. "  diff - Diff file to review.\n"
+		.. "  focus=bugs - Scope word for the review.",
+	"display includes xprompt and input descriptions"
 )
 
 local by_description = xprompt._filter_items_for_token(described_items, { text = "#follow" })
@@ -112,37 +112,37 @@ contains(preview, "Review a diff and identify follow-up work.", "preview include
 contains(preview, "## Inputs", "preview has inputs section")
 contains(preview, "- diff: path - Diff file to review.", "preview includes required input description")
 contains(
-  preview,
-  "- focus: word (default: bugs) - Scope word for the review.",
-  "preview includes defaulted input description"
+	preview,
+	"- focus: word (default: bugs) - Scope word for the review.",
+	"preview includes defaulted input description"
 )
 contains(preview, "## Preview", "preview keeps content preview section")
 contains(preview, "Review {{ diff }} with {{ focus }}.", "preview keeps existing content preview")
 
 local null_default = {
-  name = "nullable",
-  type = "xprompt",
-  kind = "xprompt",
-  insertion = "#nullable",
-  is_skill = false,
-  inputs = {
-    {
-      name = "topic",
-      type = "word",
-      required = false,
-      default = vim.NIL,
-      description = "Optional topic.",
-    },
-  },
-  preview = "Nullable {{ topic }}.",
+	name = "nullable",
+	type = "xprompt",
+	kind = "xprompt",
+	insertion = "#nullable",
+	is_skill = false,
+	inputs = {
+		{
+			name = "topic",
+			type = "word",
+			required = false,
+			default = vim.NIL,
+			description = "Optional topic.",
+		},
+	},
+	preview = "Nullable {{ topic }}.",
 }
 
 local null_preview_ok, null_preview = pcall(xprompt._format_preview, null_default)
 eq(null_preview_ok, true, "preview tolerates optional vim.NIL defaults")
 contains(
-  null_preview,
-  "- topic: word (optional) - Optional topic.",
-  "preview renders optional vim.NIL defaults as optional"
+	null_preview,
+	"- topic: word (optional) - Optional topic.",
+	"preview renders optional vim.NIL defaults as optional"
 )
 
 local null_display_ok, null_display = pcall(xprompt._format_display, null_default)
@@ -153,46 +153,46 @@ local null_preview_lines = xprompt._preview_lines(null_default)
 assert_no_newlines(null_preview_lines, "null default preview")
 
 local multiline = {
-  name = "multiline",
-  type = "xprompt",
-  kind = "xprompt",
-  insertion = "#multiline",
-  is_skill = false,
-  description = "Primary line\nSecondary line\r\nThird line\rFourth line",
-  inputs = {
-    {
-      name = "topic",
-      type = "word",
-      required = true,
-      default = nil,
-      description = "Input first line\nInput second line\r\nInput third line\rInput fourth line",
-    },
-  },
-  preview = "Preview first line\nPreview second line\r\nPreview third line\rPreview fourth line",
+	name = "multiline",
+	type = "xprompt",
+	kind = "xprompt",
+	insertion = "#multiline",
+	is_skill = false,
+	description = "Primary line\nSecondary line\r\nThird line\rFourth line",
+	inputs = {
+		{
+			name = "topic",
+			type = "word",
+			required = true,
+			default = nil,
+			description = "Input first line\nInput second line\r\nInput third line\rInput fourth line",
+		},
+	},
+	preview = "Preview first line\nPreview second line\r\nPreview third line\rPreview fourth line",
 }
 
 local multiline_preview_lines = xprompt._preview_lines(multiline)
 assert_no_newlines(multiline_preview_lines, "multiline preview")
 eq(
-  table.concat(multiline_preview_lines, "\n"),
-  "## Description\n"
-    .. "Primary line\n"
-    .. "Secondary line\n"
-    .. "Third line\n"
-    .. "Fourth line\n"
-    .. "\n"
-    .. "## Inputs\n"
-    .. "- topic: word - Input first line\n"
-    .. "  Input second line\n"
-    .. "  Input third line\n"
-    .. "  Input fourth line\n"
-    .. "\n"
-    .. "## Preview\n"
-    .. "Preview first line\n"
-    .. "Preview second line\n"
-    .. "Preview third line\n"
-    .. "Preview fourth line",
-  "preview splits multiline descriptions and body into buffer-safe lines"
+	table.concat(multiline_preview_lines, "\n"),
+	"## Description\n"
+		.. "Primary line\n"
+		.. "Secondary line\n"
+		.. "Third line\n"
+		.. "Fourth line\n"
+		.. "\n"
+		.. "## Inputs\n"
+		.. "- topic: word - Input first line\n"
+		.. "  Input second line\n"
+		.. "  Input third line\n"
+		.. "  Input fourth line\n"
+		.. "\n"
+		.. "## Preview\n"
+		.. "Preview first line\n"
+		.. "Preview second line\n"
+		.. "Preview third line\n"
+		.. "Preview fourth line",
+	"preview splits multiline descriptions and body into buffer-safe lines"
 )
 
 local multiline_entry = xprompt._format_entry(multiline)

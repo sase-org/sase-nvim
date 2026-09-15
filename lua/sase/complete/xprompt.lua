@@ -9,22 +9,22 @@ local M = {}
 --- Open the xprompt picker.
 --- @param opts? { origin_win?: integer, was_insert?: boolean, token?: SaseTokenInfo }
 function M.pick(opts)
-  opts = opts or {}
-  local replace_range = nil
-  local token = opts.token
-  if token then
-    replace_range = {
-      row = token.row,
-      col_start = token.col_start,
-      col_end = token.col_end,
-    }
-  end
-  require("sase.xprompt").pick({
-    origin_win = opts.origin_win,
-    was_insert = opts.was_insert,
-    replace_range = replace_range,
-    token = token,
-  })
+	opts = opts or {}
+	local replace_range = nil
+	local token = opts.token
+	if token then
+		replace_range = {
+			row = token.row,
+			col_start = token.col_start,
+			col_end = token.col_end,
+		}
+	end
+	require("sase.xprompt").pick({
+		origin_win = opts.origin_win,
+		was_insert = opts.was_insert,
+		replace_range = replace_range,
+		token = token,
+	})
 end
 
 return M
