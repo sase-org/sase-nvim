@@ -10,7 +10,7 @@ highlighting for project spec files, plus YAML language server schema configurat
 ### Filetype Detection & Syntax Highlighting
 
 Automatic detection and syntax highlighting for canonical project spec files
-(`~/.sase/projects/<project>/<project>.sase`) with colors matching the `sase ace` TUI:
+(`~/.sase/projects/<project>/<project>.sase`) with colors matching sase's TUI:
 
 - Field labels (`NAME:`, `STATUS:`, `HOOKS:`, `RUNNING:`, `WORKSPACE_DIR:`, etc.)
 - Status values with distinct colors (WIP, Draft, Ready, Mailed, Submitted, Reverted, Archived)
@@ -132,7 +132,7 @@ server's standard `textDocument/definition` response.
 
 The LSP client advertises snippet-capable completion, using `cmp_nvim_lsp.default_capabilities()` when available and a
 snippet-capable fallback otherwise. Bare SASE snippet trigger prefixes can complete to `CompletionItemKind.Snippet`
-items supplied by the server. Snippets come from the same Python helper-backed registry as the ACE prompt widget,
+items supplied by the server. Snippets come from the same Python helper-backed registry as the prompt widget in sase's TUI,
 including `ace.snippets` and xprompts marked with `snippet: true` or `snippet: <trigger>`. The Lua plugin does not shell
 out to load that registry.
 
@@ -323,7 +323,7 @@ separators:
 Override the look by linking or defining those groups in your colorscheme (e.g.
 `vim.api.nvim_set_hl(0, "SaseAltDelimiter", { link = "Special" })`).
 
-**Editing** mirrors the ACE prompt input for `%{...}` shorthand spacing:
+**Editing** mirrors the prompt input in sase's TUI for `%{...}` shorthand spacing:
 
 - Typing `{` immediately after a directive-valid `%` inserts two spaces after the opening brace and parks the cursor
   after the first space. The plugin does not insert the closing `}`; use your normal editor auto-pair plugin for brace
