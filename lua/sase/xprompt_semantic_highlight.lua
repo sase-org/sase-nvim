@@ -1,12 +1,24 @@
--- Add a definable-term underline to glossary semantic tokens from the SASE
--- xprompt LSP while leaving the colorscheme-owned token color alone.
+-- Small semantic-token affordances for SASE xprompt argument structure.
+--
+-- The xprompt LSP deliberately emits standard semantic token types, so most
+-- colorscheme styling remains owned by Neovim and the user's theme. Plain
+-- Neovim makes parameter and operator tokens visually collapse, though, so this
+-- module overlays two SASE-specific default groups on those token types only.
 
 local M = {}
 
 local CLIENT_NAME = "sase-xprompt-lsp"
-local GROUP = "SaseGlossaryHighlight"
-local HIGHLIGHT_GROUP = "SaseGlossaryTerm"
-local GLOSSARY_TOKEN_TYPE = "type"
+local GROUP = "SaseXpromptSemanticHighlight"
+
+local DEFAULT_LINKS = {
+	SaseXpromptArgKey = "Identifier",
+	SaseXpromptArgOperator = "Comment",
+}
+
+local TOKEN_GROUPS = {
+	parameter = "SaseXpromptArgKey",
+	operator = "SaseXpromptArgOperator",
+}
 
 local config = {
 	enabled = true,
@@ -33,24 +45,17 @@ local function client_name(client_id)
 	return client and client.name or nil
 end
 
-local function token_has_no_modifiers(token)
-	local modifiers = token and token.modifiers
-	if modifiers == nil then
-		return true
+local function token_group(token)
+	if not token then
+		return nil
 	end
-	return type(modifiers) == "table" and next(modifiers) == nil
-end
-
-local function is_glossary_token(token)
-	-- The SASE xprompt LSP keeps glossary phrases as unmodified standard
-	-- `type` tokens. Argument highlighting added later uses other standard
-	-- token types, so modifier-bearing or non-type tokens must not pick up the
-	-- glossary underline.
-	return token and token.type == GLOSSARY_TOKEN_TYPE and token_has_no_modifiers(token)
+	return TOKEN_GROUPS[token.type]
 end
 
 function M.define_highlights()
-	vim.api.nvim_set_hl(0, HIGHLIGHT_GROUP, { underline = true, default = true })
+	for group, link in pairs(DEFAULT_LINKS) do
+		vim.api.nvim_set_hl(0, group, { link = link, default = true })
+	end
 end
 
 function M._supports_lsp_token_update()
@@ -63,8 +68,8 @@ function M._on_lsp_token_update(ev)
 	end
 
 	local data = ev and ev.data or {}
-	local token = data.token
-	if not is_glossary_token(token) then
+	local group = token_group(data.token)
+	if not group then
 		return
 	end
 	if client_name(data.client_id) ~= CLIENT_NAME then
@@ -75,7 +80,7 @@ function M._on_lsp_token_update(ev)
 	if not highlight_token then
 		return
 	end
-	highlight_token(token, ev.buf, data.client_id, HIGHLIGHT_GROUP)
+	highlight_token(data.token, ev.buf, data.client_id, group)
 end
 
 function M.setup(opts)
@@ -112,8 +117,8 @@ function M._config()
 	return config
 end
 
-function M._is_glossary_token(token)
-	return is_glossary_token(token)
+function M._token_group(token)
+	return token_group(token)
 end
 
 return M

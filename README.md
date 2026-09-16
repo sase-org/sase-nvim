@@ -269,10 +269,45 @@ Manual smoke check (`@` artifact-reference completion):
 
 The headless equivalent of this check lives in `tests/lsp_artifact_ref_smoke.lua`.
 
+#### Xprompt argument semantic highlighting
+
+The xprompt LSP emits keyword-argument structure with standard semantic token types: keys use `parameter`, delimiters
+and `=` use `operator`, ordinary and quoted values use `string`, numeric values use `number`, and boolean-like values use
+`keyword`. Most of those stay entirely colorscheme-owned. On Neovim's plain defaults, argument keys and punctuation are
+hard to tell apart, so `sase-nvim` adds two opt-out overlay groups:
+
+| Highlight group            | Applied to                         | Default link |
+| -------------------------- | ---------------------------------- | ------------ |
+| `SaseXpromptArgKey`        | SASE xprompt argument `parameter` tokens | `Identifier` |
+| `SaseXpromptArgOperator`   | SASE xprompt argument `operator` tokens  | `Comment`    |
+
+Override either group in your colorscheme or after setup:
+
+```lua
+vim.api.nvim_set_hl(0, "SaseXpromptArgKey", { link = "Identifier" })
+vim.api.nvim_set_hl(0, "SaseXpromptArgOperator", { link = "Delimiter" })
+```
+
+The feature is enabled by default after `setup()` when Neovim exposes `LspTokenUpdate` and
+`vim.lsp.semantic_tokens.highlight_token`:
+
+```lua
+require("sase").setup({
+  xprompt_highlight = {
+    enabled = true, -- default
+  },
+})
+```
+
+The headless smoke check for the LSP payload lives in `tests/lsp_argument_semantic_smoke.lua`; the Neovim overlay checks
+live in `tests/xprompt_semantic_highlight.lua`.
+
 #### Glossary term underline
 
 The xprompt LSP emits project glossary phrases as standard `type` semantic tokens. Neovim keeps coloring those tokens
-through your semantic-token theme, and `sase-nvim` adds the followable-term affordance with one extra highlight group:
+through your semantic-token theme, and `sase-nvim` adds the followable-term affordance with one extra highlight group.
+Argument semantic tokens use other standard token types, so the glossary underline is applied only to unmodified SASE
+`type` tokens:
 
 | Highlight group    | Applied to                          | Default                                   |
 | ------------------ | ----------------------------------- | ----------------------------------------- |

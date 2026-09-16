@@ -73,6 +73,7 @@ end
 glossary.setup({ enabled = true })
 
 local glossary_token = { type = "type", line = 0, start_col = 4, end_col = 15 }
+same(glossary._is_glossary_token(glossary_token), true, "plain type token is a glossary token")
 glossary._on_lsp_token_update({
 	buf = 12,
 	data = { client_id = 7, token = glossary_token },
@@ -82,6 +83,18 @@ same(highlighted[1].token, glossary_token, "highlighted token is forwarded")
 same(highlighted[1].bufnr, 12, "buffer is forwarded")
 same(highlighted[1].client_id, 7, "client id is forwarded")
 same(highlighted[1].group, "SaseGlossaryTerm", "SaseGlossaryTerm group is applied")
+
+reset_calls()
+glossary._on_lsp_token_update({
+	buf = 12,
+	data = { client_id = 7, token = { type = "type", modifiers = { "deprecated" } } },
+})
+same(#highlighted, 0, "modifier-bearing type token is ignored")
+same(
+	glossary._is_glossary_token({ type = "type", modifiers = { "deprecated" } }),
+	false,
+	"modifier-bearing type token is not a glossary token"
+)
 
 reset_calls()
 glossary._on_lsp_token_update({
@@ -110,6 +123,7 @@ same(#highlighted, 0, "disabled glossary highlighting is ignored")
 require("sase").setup({
 	lsp = { enabled = false },
 	glossary_highlight = { enabled = false },
+	xprompt_highlight = { enabled = false },
 	alt_highlight = { enabled = false },
 	alt_editing = { enabled = false },
 	xprompt_spacer = { enabled = false },
