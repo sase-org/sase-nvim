@@ -103,21 +103,31 @@ local function decode_tokens(data, legend)
 	return tokens
 end
 
-local function assert_token(tokens, start, length, token_type)
+local function assert_token_at(tokens, line, start, length, token_type)
 	for _, token in ipairs(tokens) do
-		if token.line == 0 and token.start == start and token.length == length and token.type == token_type then
+		if
+			token.line == line
+			and token.start == start
+			and token.length == length
+			and token.type == token_type
+		then
 			return
 		end
 	end
 	fail(
 		string.format(
-			"missing %s token at %d+%d in %s",
+			"missing %s token at %d:%d+%d in %s",
 			token_type,
+			line,
 			start,
 			length,
 			vim.inspect(tokens)
 		)
 	)
+end
+
+local function assert_token(tokens, start, length, token_type)
+	assert_token_at(tokens, 0, start, length, token_type)
 end
 
 local root = vim.fn.tempname()
@@ -149,6 +159,7 @@ local legend = provider.legend and provider.legend.tokenTypes or {}
 local line = "#git(owner=sase, count=2, draft=true)"
 local tokens = decode_tokens(semantic_tokens(line), legend)
 
+assert_token(tokens, 1, 3, "function")
 assert_token(tokens, 4, 1, "operator")
 assert_token(tokens, 5, 5, "parameter")
 assert_token(tokens, 10, 1, "operator")
@@ -157,6 +168,17 @@ assert_token(tokens, 17, 5, "parameter")
 assert_token(tokens, 23, 1, "number")
 assert_token(tokens, 26, 5, "parameter")
 assert_token(tokens, 32, 4, "keyword")
+
+local directive_tokens = decode_tokens(semantic_tokens("%q(capacity=2)"), legend)
+assert_token(directive_tokens, 1, 1, "macro")
+assert_token(directive_tokens, 3, 8, "parameter")
+assert_token(directive_tokens, 12, 1, "number")
+
+local multiline_tokens = decode_tokens(semantic_tokens("🙂 #git(text=[[alpha\r\nbeta 🙂\r\ngamma]])"), legend)
+assert_token_at(multiline_tokens, 0, 4, 3, "function")
+assert_token_at(multiline_tokens, 0, 13, 7, "string")
+assert_token_at(multiline_tokens, 1, 0, 7, "string")
+assert_token_at(multiline_tokens, 2, 0, 7, "string")
 
 local fenced = "```markdown\n#git(owner=sase)\n```"
 local fenced_tokens = decode_tokens(semantic_tokens(fenced), legend)
