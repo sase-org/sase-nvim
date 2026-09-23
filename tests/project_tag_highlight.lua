@@ -37,6 +37,9 @@ for index = 0, highlight._ACCENT_COUNT - 1 do
 	local hl = get_hl("SaseProjectTagAccent" .. tostring(index))
 	same(hl.bold, true, "SaseProjectTagAccent" .. tostring(index) .. " is bold")
 	same(hl.fg, hex_to_number(highlight._FALLBACK_PALETTE[index + 1]), "SaseProjectTagAccent" .. tostring(index) .. " uses fallback palette")
+	local sigil_hl = get_hl("SaseProjectTagSigil" .. tostring(index))
+	same(sigil_hl.bold, nil, "SaseProjectTagSigil" .. tostring(index) .. " is dim (not bold)")
+	same(sigil_hl.fg, hex_to_number(highlight._FALLBACK_PALETTE[index + 1]), "SaseProjectTagSigil" .. tostring(index) .. " uses fallback palette")
 end
 
 local unknown_hl = get_hl("SaseProjectTagUnknown")
@@ -67,9 +70,24 @@ vim.api.nvim_set_hl(0, "SaseProjectTagAccent5", {})
 highlight.define_highlights()
 same(get_hl("SaseProjectTagAccent5").fg, hex_to_number(palette[6]), "applied palette colors the accent groups")
 same(get_hl("SaseProjectTagAccent0").fg, 0x123456, "non-force apply keeps user customization")
+same(get_hl("SaseProjectTagSigil5").fg, hex_to_number(palette[6]), "applied palette colors the sigil groups")
 
+-- A server palette refresh preserves user overrides but tracks the rest.
+vim.api.nvim_set_hl(0, "SaseProjectTagAccent0", { bold = true, fg = 0x123456 })
+vim.api.nvim_set_hl(0, "SaseProjectTagSigil0", { fg = 0x123456 })
+local refreshed = {}
+for index = 1, highlight._ACCENT_COUNT do
+	refreshed[index] = string.format("#%06x", 0xF00000 + index)
+end
+highlight.apply_palette(refreshed)
+same(get_hl("SaseProjectTagAccent0").fg, 0x123456, "palette refresh keeps the user accent override")
+same(get_hl("SaseProjectTagSigil0").fg, 0x123456, "palette refresh keeps the user sigil override")
+same(get_hl("SaseProjectTagAccent5").fg, hex_to_number(refreshed[6]), "palette refresh tracks untracked accent groups")
+same(get_hl("SaseProjectTagSigil5").fg, hex_to_number(refreshed[6]), "palette refresh tracks untracked sigil groups")
+
+-- The legacy `force` flag no longer clobbers overrides either.
 highlight.apply_palette(palette, { force = true })
-same(get_hl("SaseProjectTagAccent0").fg, hex_to_number(palette[1]), "force apply takes server colors")
+same(get_hl("SaseProjectTagAccent0").fg, 0x123456, "force apply keeps user customization")
 
 -- --- initialize-result extraction ---------------------------------------
 
@@ -126,8 +144,10 @@ local function token_of(modifiers)
 	return { type = "saseProjectTag", modifiers = modifiers }
 end
 
-same(highlight._token_group(token_of({ "sigil", "accent3" })), "SaseProjectTagAccent3", "sigil accent token maps to its accent group")
+same(highlight._token_group(token_of({ "sigil", "accent3" })), "SaseProjectTagSigil3", "sigil accent token maps to its dim sigil group")
+same(highlight._token_group(token_of({ "accent3" })), "SaseProjectTagAccent3", "name accent token maps to its accent group")
 same(highlight._token_group(token_of({ "accent17" })), "SaseProjectTagAccent17", "name accent token maps to its accent group")
+same(highlight._sigil_group(3), "SaseProjectTagSigil3", "sigil group helper names the dim group")
 same(highlight._token_group(token_of({ "sigil", "unknown" })), "SaseProjectTagUnknown", "unknown sigil maps to unknown group")
 same(highlight._token_group(token_of({ "unknown" })), "SaseProjectTagUnknown", "unknown name maps to unknown group")
 same(highlight._token_group(token_of({ "sigil", "disabled" })), "SaseProjectTagDisabled", "disabled sigil maps to disabled group")
@@ -141,7 +161,15 @@ highlight._on_lsp_token_update({
 	buf = 12,
 	data = { client_id = 7, token = token_of({ "sigil", "accent3" }) },
 })
-same(#highlighted, 1, "sase project tag token is highlighted")
+same(#highlighted, 1, "sase project tag sigil token is highlighted")
+same(highlighted[1].group, "SaseProjectTagSigil3", "dim sigil group is applied")
+
+reset_calls()
+highlight._on_lsp_token_update({
+	buf = 12,
+	data = { client_id = 7, token = token_of({ "accent3" }) },
+})
+same(#highlighted, 1, "sase project tag name token is highlighted")
 same(highlighted[1].group, "SaseProjectTagAccent3", "accent group is applied")
 
 reset_calls()

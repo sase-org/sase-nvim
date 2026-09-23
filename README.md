@@ -30,7 +30,7 @@ when the server command is unavailable or disabled:
 | `#token` / `#!token` (xprompt reference)     | LSP completion, or xprompt picker                        |
 | `/skill` / `/partial` (slash skill)          | LSP completion, or skill-filtered picker                 |
 | `%directive`                                 | LSP directive completion                                 |
-| `+` / `+project` (project tag trigger)        | LSP project-tag completion (expands to `+sase …`)        |
+| `+` / `+project` (project tag trigger)        | LSP project-tag completion, or project picker (`+sase`)  |
 | `#gh:` / `#git:` (VCS ref root)              | LSP VCS ref completion for projects, PRs, and namespaces |
 | `#gh:owner/` / `#gh(owner/` (VCS repo ref)   | LSP VCS repository completion                            |
 | `@` / `@kind:query` (artifact reference)     | LSP fuzzy artifact-reference completion, server-ranked   |
@@ -180,9 +180,10 @@ other workspace target from the same prompt segment, so picking a project always
 entirely by the LSP — native `vim.lsp.completion` inherits the `+` trigger and applies the replacement plus the
 removal as `additionalTextEdits` edits, and `nvim-cmp` picks it up the same way through
 `cmp_nvim_lsp.default_capabilities()`. No extra Lua configuration is required. Pressing `<C-t>` on a `+query` asks the
-LSP for the same completion in every completion backend; without a server the key is a no-op there. The completion
-catalog is materialized by `sase` at LSP launch and re-read per request, so newly created or archived projects appear
-after the catalog is rewritten.
+LSP for the same completion first; when the server is unavailable — or native completion is disabled, as with an
+`nvim-cmp` setup — it falls back to a project picker built from `sase project list --json` that inserts the chosen
+`+name` in place of the query. The completion catalog is materialized by `sase` at LSP launch and re-read per
+request, so newly created or archived projects appear after the catalog is rewritten.
 
 Root ref completion is available inside registered VCS workflow refs before the namespace slash. Typing `:` or `(` after
 a workflow tag, such as `#gh:` or `#git(`, opens project and PR-sized Patch rows for that provider. Providers can
@@ -239,8 +240,11 @@ Manual smoke check (`+` VCS project completion):
 1. From an active SASE project, open an eligible buffer (e.g. `sase_prompt_*.md`) under a `.sase`/`.git` root.
 2. Type a prompt followed by `+` (for example `Describe this repo. +`); the project menu opens. Filter with `+sa`.
 3. Accept a project and verify the prompt becomes `Describe this repo. +<project>` with any prior VCS tag removed.
+4. With the LSP disabled (`lsp.enabled = false`, `completion_backend = "picker"`), press `<C-t>` on `+sa` and verify
+   the project picker offers matching `+name` rows and inserts the chosen tag in place.
 
-The headless equivalent of this check lives in `tests/lsp_vcs_project_smoke.lua`.
+The headless equivalent of this check lives in `tests/lsp_vcs_project_smoke.lua`; the picker fallback checks live in
+`tests/project_tag_picker.lua`.
 
 Manual smoke check (`#gh:` VCS ref-root completion):
 
@@ -309,12 +313,14 @@ live in `tests/xprompt_semantic_highlight.lua`.
 
 The xprompt LSP emits each project tag (`+sase`) as two `saseProjectTag` semantic tokens — the `+` sigil plus the name —
 with an `accentN` modifier resolved from the Python-owned 18-color accent palette, `unknown` for unresolvable tags, and
-`disabled` for resolved tags without a VCS provider. `sase-nvim` maps those tokens onto highlight groups built from the
-palette the server publishes in its initialize result, so tags render in the same accent as the TUI project chip:
+`disabled` for disabled tags and resolved tags without a VCS provider. `sase-nvim` maps those tokens onto highlight
+groups built from the palette the server publishes in its initialize result, so tags render in the same accent as the
+TUI project chip: the `+` sigil in the dim accent, the name in the bold accent.
 
 | Highlight group              | Applied to                              | Default                                       |
 | ---------------------------- | --------------------------------------- | --------------------------------------------- |
-| `SaseProjectTagAccent0…17`    | Tags resolving to accent `N`            | bold, `fg` from the server palette            |
+| `SaseProjectTagAccent0…17`    | Tag names resolving to accent `N`       | bold, `fg` from the server palette            |
+| `SaseProjectTagSigil0…17`     | `+` sigils resolving to accent `N`      | `fg` from the server palette (not bold)       |
 | `SaseProjectTagUnknown`       | Unknown or ambiguous tags               | theme warning color with an underline         |
 | `SaseProjectTagDisabled`      | Disabled, provider-less, or accent-less tags (`+home`) | `Comment`                        |
 
@@ -323,6 +329,9 @@ Override any group in your colorscheme or after setup:
 ```lua
 vim.api.nvim_set_hl(0, "SaseProjectTagAccent3", { fg = "#B46817", bold = true })
 ```
+
+Server palette refreshes never clobber those overrides: groups you customized keep their colors while the rest track
+the published palette (and re-apply on `ColorScheme`).
 
 The feature is enabled by default after `setup()` when Neovim exposes `LspTokenUpdate` and
 `vim.lsp.semantic_tokens.highlight_token`:
@@ -338,7 +347,8 @@ require("sase").setup({
 Manual smoke check (project tag highlighting):
 
 1. From an active SASE project, open an eligible prompt buffer and type a known tag such as `+sase`.
-2. Verify the tag renders bold in the project's accent color, matching the TUI chip.
+2. Verify the name renders bold in the project's accent color and the `+` sigil renders in the same accent without
+   bold, matching the TUI chip.
 3. Type an unknown tag such as `+nope` and verify it renders in the warning color with an underline.
 
 The headless equivalent of this check lives in `tests/lsp_project_tag_highlight_smoke.lua`; the Neovim overlay checks
@@ -549,6 +559,7 @@ use `"picker"`.
 │   │       ├── _token.lua       # picker fallback token classification
 │   │       ├── file.lua         # fallback file-system picker
 │   │       ├── file_history.lua # fallback recent-file picker
+│   │       ├── project_tag.lua  # fallback project-tag picker (`sase project list`)
 │   │       └── xprompt.lua      # fallback xprompt picker wrapper
 │   └── telescope/
 │       └── _extensions/sase.lua # Telescope pickers for xprompts, files, and recent files

@@ -321,7 +321,7 @@ function M.start(bufnr)
 			if ok then
 				local palette = highlight.palette_from_initialize_result(initialize_result)
 				if palette then
-					highlight.apply_palette(palette, { force = true })
+					highlight.apply_palette(palette)
 				end
 			end
 			return true

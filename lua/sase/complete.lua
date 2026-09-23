@@ -49,11 +49,17 @@ local function picker_trigger()
 	end
 
 	if kind == "project_tag" then
-		-- `+project` completion is served entirely by the xprompt LSP (the
-		-- project catalog lives server-side), so ask for LSP completion even
-		-- when the picker is the configured fallback. Without a server this
-		-- is a no-op, same as an unrecognised token.
-		require("sase.lsp").complete()
+		-- `+project` completion prefers the xprompt LSP, but the picker
+		-- fallback must also work without a server (or when native
+		-- completion is disabled, e.g. nvim-cmp owns it): offer projects
+		-- from `sase project list --json` and insert `+name` in place.
+		local origin_win = vim.api.nvim_get_current_win()
+		local was_insert = vim.fn.mode() == "i" or vim.fn.mode() == "ic"
+		require("sase.complete.project_tag").pick({
+			origin_win = origin_win,
+			was_insert = was_insert,
+			token = info,
+		})
 		return
 	end
 

@@ -5,9 +5,11 @@
 -- the Python-owned 18-color palette. The palette itself arrives in the
 -- server's initialize result at
 -- `experimental.sase.projectTagPalette`, so the highlight groups below carry
--- the same hex values as the TUI chip. Unknown tags get the theme warning
--- color with an underline; disabled/provider-less tags and accent-less
--- resolved tags (such as `+home`) stay neutrally dim.
+-- the same hex values as the TUI chip. The `+` sigil renders in its accent
+-- without the name's bold (`SaseProjectTagSigilN`), matching the chip's
+-- `dim <accent>` sigil. Unknown tags get the theme warning color with an
+-- underline; disabled/provider-less tags and accent-less resolved tags
+-- (such as `+home`) stay neutrally dim.
 
 local M = {}
 
@@ -52,6 +54,10 @@ local applied_palette = nil
 
 local function accent_group(index)
 	return "SaseProjectTagAccent" .. tostring(index)
+end
+
+local function sigil_group(index)
+	return "SaseProjectTagSigil" .. tostring(index)
 end
 
 local function semantic_highlight_token()
@@ -105,13 +111,55 @@ local function warning_fg()
 	return nil
 end
 
+local function hl_fg(name)
+	local ok, hl = pcall(vim.api.nvim_get_hl, 0, { name = name })
+	if ok and type(hl) == "table" and type(hl.fg) == "number" then
+		return hl.fg
+	end
+	return nil
+end
+
+local function hex_number(hex)
+	return tonumber(hex:sub(2), 16)
+end
+
+-- Sigil groups render the `+` in the tag's accent without the name's bold,
+-- matching the TUI chip (`dim <accent>` sigil, `bold <accent>` name).
+-- Neovim highlights have no `dim` attribute, so the non-bold fg carries it.
 local function define_accent_groups(palette, default)
 	for index = 0, ACCENT_COUNT - 1 do
-		local hl = { fg = palette[index + 1], bold = true }
+		local accent_hl = { fg = palette[index + 1], bold = true }
+		local sigil_hl = { fg = palette[index + 1] }
 		if default then
-			hl.default = true
+			accent_hl.default = true
+			sigil_hl.default = true
 		end
-		vim.api.nvim_set_hl(0, accent_group(index), hl)
+		vim.api.nvim_set_hl(0, accent_group(index), accent_hl)
+		vim.api.nvim_set_hl(0, sigil_group(index), sigil_hl)
+	end
+end
+
+-- Define one palette-owned group, preserving user and colorscheme overrides:
+-- a group whose current color differs from the previous palette color is
+-- left alone, while unset groups and groups still carrying the previous
+-- palette color track the new palette.
+local function track_palette_group(name, new_hex, old_fg, bold)
+	local current = hl_fg(name)
+	if current ~= nil and current ~= old_fg then
+		return
+	end
+	local hl = { fg = new_hex, bold = bold }
+	if current == nil then
+		hl.default = true
+	end
+	vim.api.nvim_set_hl(0, name, hl)
+end
+
+local function track_palette(palette, old)
+	for index = 0, ACCENT_COUNT - 1 do
+		local old_fg = hex_number(old[index + 1])
+		track_palette_group(accent_group(index), palette[index + 1], old_fg, true)
+		track_palette_group(sigil_group(index), palette[index + 1], old_fg, nil)
 	end
 end
 
@@ -126,23 +174,20 @@ function M.define_highlights()
 	vim.api.nvim_set_hl(0, DISABLED_GROUP, { link = "Comment", default = true })
 end
 
---- Apply a server-published palette and define the accent groups from it.
---- Palettes that are not 18 hex colors are ignored. Server data wins over
---- the fallback copy, so pass `force` when the palette came from the
---- server; colorscheme re-application stays opt-out friendly via
---- `define_highlights` (`default = true`).
+--- Apply a server-published palette and track the accent and sigil groups to
+--- it. Palettes that are not 18 hex colors are ignored. Groups the user (or
+--- colorscheme) customized keep their colors; every other group refreshes
+--- immediately and again on `ColorScheme` via `define_highlights`
+--- (`default = true`).
 --- @param palette string[]|nil
---- @param opts? { force?: boolean }
+--- @param opts? { force?: boolean }  deprecated, ignored: overrides always win
 function M.apply_palette(palette, opts)
 	if not valid_palette(palette) then
 		return false
 	end
+	local old = current_palette()
 	applied_palette = palette
-	if opts and opts.force then
-		define_accent_groups(palette, false)
-	else
-		M.define_highlights()
-	end
+	track_palette(palette, old)
 	return true
 end
 
@@ -173,6 +218,9 @@ local function token_group(token)
 	end
 	for index = 0, ACCENT_COUNT - 1 do
 		if modifiers["accent" .. tostring(index)] then
+			if modifiers["sigil"] then
+				return sigil_group(index)
+			end
 			return accent_group(index)
 		end
 	end
@@ -277,6 +325,10 @@ end
 
 function M._accent_group(index)
 	return accent_group(index)
+end
+
+function M._sigil_group(index)
+	return sigil_group(index)
 end
 
 M._UNKNOWN_GROUP = UNKNOWN_GROUP
