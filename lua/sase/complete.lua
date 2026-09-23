@@ -48,6 +48,15 @@ local function picker_trigger()
 		return
 	end
 
+	if kind == "project_tag" then
+		-- `+project` completion is served entirely by the xprompt LSP (the
+		-- project catalog lives server-side), so ask for LSP completion even
+		-- when the picker is the configured fallback. Without a server this
+		-- is a no-op, same as an unrecognised token.
+		require("sase.lsp").complete()
+		return
+	end
+
 	if kind == "file_history" then
 		local origin_win = vim.api.nvim_get_current_win()
 		local was_insert = vim.fn.mode() == "i" or vim.fn.mode() == "ic"
@@ -91,7 +100,7 @@ function M.setup(opts)
 		local lhs = type(opts.keymap) == "string" and opts.keymap or "<C-t>"
 		vim.keymap.set("i", lhs, function()
 			M.trigger()
-		end, { silent = true, desc = "sase completion (xprompt / file / file-history)" })
+		end, { silent = true, desc = "sase completion (xprompt / project-tag / file / file-history)" })
 	end
 end
 

@@ -313,6 +313,19 @@ function M.start(bufnr)
 			allow_all_markdown = config.allow_all_markdown == true,
 		},
 		on_attach = on_attach,
+		on_init = function(client, initialize_result)
+			-- The server publishes its accent palette in the raw initialize
+			-- result (`experimental.sase.projectTagPalette`); Neovim strips
+			-- `experimental` from `server_capabilities`, so capture it here.
+			local ok, highlight = pcall(require, "sase.project_tag_highlight")
+			if ok then
+				local palette = highlight.palette_from_initialize_result(initialize_result)
+				if palette then
+					highlight.apply_palette(palette, { force = true })
+				end
+			end
+			return true
+		end,
 	}, { bufnr = bufnr, silent = true })
 end
 

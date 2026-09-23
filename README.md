@@ -30,7 +30,7 @@ when the server command is unavailable or disabled:
 | `#token` / `#!token` (xprompt reference)     | LSP completion, or xprompt picker                        |
 | `/skill` / `/partial` (slash skill)          | LSP completion, or skill-filtered picker                 |
 | `%directive`                                 | LSP directive completion                                 |
-| `+` / `+project` (VCS project trigger)       | LSP VCS project completion (expands to `#gh:sase …`)     |
+| `+` / `+project` (project tag trigger)        | LSP project-tag completion (expands to `+sase …`)        |
 | `#gh:` / `#git:` (VCS ref root)              | LSP VCS ref completion for projects, PRs, and namespaces |
 | `#gh:owner/` / `#gh(owner/` (VCS repo ref)   | LSP VCS repository completion                            |
 | `@` / `@kind:query` (artifact reference)     | LSP fuzzy artifact-reference completion, server-ranked   |
@@ -173,13 +173,16 @@ placeholder menu while preserving later snippet tabstops. Use the configured `<C
 completion manually.
 
 The server also advertises `+` as a completion trigger character. Typing `+` at the start of a line, at end of buffer,
-or after whitespace opens a menu of active VCS projects; typing `+sa` filters by project name. Accepting an item
-prepends the project's VCS xprompt workflow tag (e.g. `#gh:sase`) to the start of the prompt and removes the `+query`
-token, replacing any VCS tag already present rather than stacking a second one. This is served entirely by the LSP —
-native `vim.lsp.completion` inherits the `+` trigger and applies the prepend/replace as an `additionalTextEdits` edit,
-and `nvim-cmp` picks it up the same way through `cmp_nvim_lsp.default_capabilities()`. No extra Lua configuration is
-required. The completion catalog is materialized by `sase` at LSP launch and re-read per request, so newly created or
-archived projects appear after the catalog is rewritten.
+or after whitespace, `{`, or `|` opens a menu of active projects; typing `+sa` filters by project name. Accepting a
+project row replaces the typed `+query` token in place with the project tag (e.g. `+sase `, or `#gh:<name> ` when the
+name cannot be written as a tag); accepting a PR row inserts its `#` spelling instead. Accepting also removes every
+other workspace target from the same prompt segment, so picking a project always leaves exactly one. This is served
+entirely by the LSP — native `vim.lsp.completion` inherits the `+` trigger and applies the replacement plus the
+removal as `additionalTextEdits` edits, and `nvim-cmp` picks it up the same way through
+`cmp_nvim_lsp.default_capabilities()`. No extra Lua configuration is required. Pressing `<C-t>` on a `+query` asks the
+LSP for the same completion in every completion backend; without a server the key is a no-op there. The completion
+catalog is materialized by `sase` at LSP launch and re-read per request, so newly created or archived projects appear
+after the catalog is rewritten.
 
 Root ref completion is available inside registered VCS workflow refs before the namespace slash. Typing `:` or `(` after
 a workflow tag, such as `#gh:` or `#git(`, opens project and PR-sized Patch rows for that provider. Providers can
@@ -235,7 +238,7 @@ Manual smoke check (`+` VCS project completion):
 
 1. From an active SASE project, open an eligible buffer (e.g. `sase_prompt_*.md`) under a `.sase`/`.git` root.
 2. Type a prompt followed by `+` (for example `Describe this repo. +`); the project menu opens. Filter with `+sa`.
-3. Accept a project and verify the prompt becomes `#gh:<project> Describe this repo.` with any prior VCS tag replaced.
+3. Accept a project and verify the prompt becomes `Describe this repo. +<project>` with any prior VCS tag removed.
 
 The headless equivalent of this check lives in `tests/lsp_vcs_project_smoke.lua`.
 
@@ -301,6 +304,46 @@ require("sase").setup({
 
 The headless smoke check for the LSP payload lives in `tests/lsp_argument_semantic_smoke.lua`; the Neovim overlay checks
 live in `tests/xprompt_semantic_highlight.lua`.
+
+#### Project tag highlighting
+
+The xprompt LSP emits each project tag (`+sase`) as two `saseProjectTag` semantic tokens — the `+` sigil plus the name —
+with an `accentN` modifier resolved from the Python-owned 18-color accent palette, `unknown` for unresolvable tags, and
+`disabled` for resolved tags without a VCS provider. `sase-nvim` maps those tokens onto highlight groups built from the
+palette the server publishes in its initialize result, so tags render in the same accent as the TUI project chip:
+
+| Highlight group              | Applied to                              | Default                                       |
+| ---------------------------- | --------------------------------------- | --------------------------------------------- |
+| `SaseProjectTagAccent0…17`    | Tags resolving to accent `N`            | bold, `fg` from the server palette            |
+| `SaseProjectTagUnknown`       | Unknown or ambiguous tags               | theme warning color with an underline         |
+| `SaseProjectTagDisabled`      | Disabled, provider-less, or accent-less tags (`+home`) | `Comment`                        |
+
+Override any group in your colorscheme or after setup:
+
+```lua
+vim.api.nvim_set_hl(0, "SaseProjectTagAccent3", { fg = "#B46817", bold = true })
+```
+
+The feature is enabled by default after `setup()` when Neovim exposes `LspTokenUpdate` and
+`vim.lsp.semantic_tokens.highlight_token`:
+
+```lua
+require("sase").setup({
+  project_tag_highlight = {
+    enabled = true, -- default
+  },
+})
+```
+
+Manual smoke check (project tag highlighting):
+
+1. From an active SASE project, open an eligible prompt buffer and type a known tag such as `+sase`.
+2. Verify the tag renders bold in the project's accent color, matching the TUI chip.
+3. Type an unknown tag such as `+nope` and verify it renders in the warning color with an underline.
+
+The headless equivalent of this check lives in `tests/lsp_project_tag_highlight_smoke.lua`; the Neovim overlay checks
+(including the `+` token recognition used by `<C-t>`) live in `tests/project_tag_highlight.lua` and
+`tests/project_tag_token.lua`.
 
 #### Glossary term underline
 

@@ -51,6 +51,26 @@ local function is_token_delim_at(line, pos)
 	return is_delim(ch)
 end
 
+--- Left-boundary characters for a project tag (`+` at the start of the text,
+--- or directly after whitespace, `{`, or `|`), mirroring the D1 grammar.
+local function is_tag_left_boundary(line, plus_pos)
+	if plus_pos <= 1 then
+		return true
+	end
+	local prev = line:sub(plus_pos - 1, plus_pos - 1)
+	return prev:match("%s") ~= nil or prev == "{" or prev == "|"
+end
+
+--- Partial tag name while typing: starts with a letter, continues with tag
+--- characters. The completed-tag rule (never ends in `.` or `-`) is not
+--- enforced here so `<C-t>` still triggers mid-query.
+local function is_tag_name_partial(name)
+	if name == "" then
+		return true
+	end
+	return name:match("^[A-Za-z][A-Za-z0-9_.-]*$") ~= nil
+end
+
 --- @class SaseTokenInfo
 --- @field text       string   Token text (no leading/trailing delimiter).
 --- @field row        integer  0-indexed buffer row of the token.
@@ -96,10 +116,34 @@ function M.token_under_cursor()
 	end
 
 	if s == e then
+		-- Bare `+` at a tag left-boundary is the project-tag trigger. Check
+		-- both the character before the cursor (insert mode, just typed) and
+		-- the character under it (normal mode positioning).
+		for _, plus_at in ipairs({ col, col + 1 }) do
+			if plus_at >= 1 and line:sub(plus_at, plus_at) == "+" and is_tag_left_boundary(line, plus_at) then
+				return {
+					text = "+",
+					row = row,
+					col_start = plus_at - 1,
+					col_end = plus_at,
+				}
+			end
+		end
 		return nil
 	end
+	local text = line:sub(s + 1, e)
+	-- A `+` directly before the token at a tag left-boundary belongs to a
+	-- `+project` tag query, so keep it as one token for the picker.
+	if s >= 1 and line:sub(s, s) == "+" and is_tag_left_boundary(line, s) and is_tag_name_partial(text) then
+		return {
+			text = "+" .. text,
+			row = row,
+			col_start = s - 1,
+			col_end = e,
+		}
+	end
 	return {
-		text = line:sub(s + 1, e),
+		text = text,
 		row = row,
 		col_start = s,
 		col_end = e,
@@ -164,14 +208,36 @@ function M.is_path_like(token)
 	return bare:find("/", 1, true) ~= nil
 end
 
+--- True when *token* looks like a `+project` tag query: a `+` trigger with
+--- an optional partial tag name. Mirrors the D1 grammar loosely (the
+--- completed-tag right boundary is not enforced so `<C-t>` triggers
+--- mid-query).
+--- @param token string|nil
+--- @return boolean
+function M.is_project_tag_like(token)
+	if not token or token == "" then
+		return false
+	end
+	if token:sub(1, 1) ~= "+" then
+		return false
+	end
+	if token:match("%s") ~= nil then
+		return false
+	end
+	return is_tag_name_partial(token:sub(2))
+end
+
 --- Classify a token into a completion mode.
 --- An empty / nil token means "cursor isn't on any token" which the TUI
 --- maps to file-history completion, so we do the same here.
 --- @param token string|nil
---- @return "xprompt"|"file"|"file_history"|nil
+--- @return "xprompt"|"project_tag"|"file"|"file_history"|nil
 function M.classify(token)
 	if not token or token == "" then
 		return "file_history"
+	end
+	if M.is_project_tag_like(token) then
+		return "project_tag"
 	end
 	if M.is_xprompt_like(token) then
 		return "xprompt"

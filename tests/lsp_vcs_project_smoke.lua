@@ -1,7 +1,8 @@
--- Headless smoke test for the `+` VCS project completion served by the xprompt
--- LSP. Confirms Neovim auto-picks up the `+` trigger character from the server
--- capabilities and that the canonical expansion (including replacing an existing
--- leading VCS tag) applies correctly in a real buffer.
+-- Headless smoke test for the `+` project-tag completion served by the
+-- xprompt LSP. Confirms Neovim auto-picks up the `+` trigger character from
+-- the server capabilities and that accepting a row applies the tag-form
+-- expansion in place (project rows insert `+<name> `, PR rows keep their `#`
+-- spelling, every other workspace target in the segment is removed).
 --
 -- Neovim's native `vim.lsp.completion` applies the selected item's primary
 -- `textEdit` (as the inserted word) plus its `additionalTextEdits` on
@@ -115,7 +116,7 @@ end
 --- Drive a `+` completion for a single-line prompt, then apply the accepted
 --- item's edits to the live buffer exactly as native completion does on
 --- `CompleteDone` (primary `textEdit` plus `additionalTextEdits`), and assert
---- the buffer matches the canonical expansion. Using the real attached buffer
+--- the buffer matches the tag-form expansion. Using the real attached buffer
 --- keeps the test faithful to the document the server actually saw, including
 --- Neovim's normal trailing line ending.
 local function assert_expansion(line, item_label, expected, expected_filter_text, expected_detail)
@@ -158,14 +159,36 @@ end
 local root = vim.fn.tempname()
 vim.fn.mkdir(root .. "/.sase", "p")
 
--- Hand-written catalog mirroring `vcs_project_catalog_payload()` so the test is
--- independent of any real project state. `workflow_names` includes `git` so the
--- replace-existing-tag case is exercised end to end.
+-- Hand-written v5 catalog mirroring `vcs_project_catalog_payload()` so the
+-- test is independent of any real project state. Project rows carry their
+-- tag spelling and accent index; the `project_tags` targets drive tag
+-- resolution for highlighting and diagnostics.
+local accent_palette = {
+	"#C5547D",
+	"#CA545A",
+	"#C75A31",
+	"#B46817",
+	"#A17204",
+	"#8B7B02",
+	"#6F8312",
+	"#3F8B2C",
+	"#1B8B5D",
+	"#108A79",
+	"#1E878C",
+	"#1485A1",
+	"#0982BE",
+	"#4379D3",
+	"#6E70D4",
+	"#8E67CA",
+	"#A65EB7",
+	"#B9589C",
+}
 local catalog_path = root .. "/vcs_project_catalog.json"
 vim.fn.writefile({
 	vim.json.encode({
-		schema_version = 3,
+		schema_version = 5,
 		workflow_names = { "gh", "git", "hg" },
+		accent_palette = accent_palette,
 		entries = {
 			{
 				name = "sase",
@@ -175,8 +198,12 @@ vim.fn.writefile({
 				description = "SASE repo",
 				aliases = {},
 				kind = "project",
+				entry_kind = "project",
 				project = "sase",
 				status = "",
+				key = "gh_sase-org__sase",
+				tag = "+sase",
+				accent_index = 3,
 			},
 			{
 				name = "ship-completion",
@@ -186,6 +213,7 @@ vim.fn.writefile({
 				description = "Completion Patch",
 				aliases = {},
 				kind = "patch",
+				entry_kind = "patch",
 				project = "sase",
 				status = "Ready",
 			},
@@ -197,9 +225,13 @@ vim.fn.writefile({
 				description = "Review completion Patch",
 				aliases = {},
 				kind = "patch",
+				entry_kind = "patch",
 				project = "sase",
 				status = "Ready",
 			},
+		},
+		project_tags = {
+			{ key = "gh_sase-org__sase", name = "sase", aliases = {}, workflow_type = "gh" },
 		},
 	}),
 }, catalog_path)
@@ -226,13 +258,12 @@ wait_for_client(client_id)
 
 assert_plus_trigger(client_id)
 
--- Realistic end-of-line `+` triggers from the plan's parity table (selected
--- project `sase`). The exhaustive golden table is unit-tested in the Python
--- (Phase 1) and Rust (Phase 3) suites; here we confirm the integration applies
--- the same expansion in a live Neovim buffer.
--- Start-of-line trigger on an otherwise-empty first line must not insert a
--- blank line above the expanded VCS tag.
-assert_expansion("+s", "sase", "#gh:sase ", "+sase", "#gh:sase")
+-- Project rows complete to their tag spelling in place; PR rows keep their
+-- `#` spelling. The exhaustive golden table is unit-tested in the Rust
+-- suites; here we confirm the integration applies the same expansion in a
+-- live Neovim buffer. Start-of-line triggers on an otherwise-empty first
+-- line must not insert a blank line above the expanded tag.
+assert_expansion("+s", "+sase", "+sase ", "+sase", "GitHub · #gh:sase")
 assert_expansion("+ship", "ship-completion", "#gh:ship-completion ", "+ship-completion", "#gh:ship-completion")
 assert_expansion(
 	"+review",
@@ -241,11 +272,12 @@ assert_expansion(
 	"+review-completion",
 	"#gh:review-completion"
 )
-assert_expansion("Describe this repo. +", "sase", "#gh:sase Describe this repo.", "+sase", "#gh:sase")
--- Replace-existing: a leading VCS tag is swapped, never stacked.
-assert_expansion("#git:foo Fix bug +", "sase", "#gh:sase Fix bug", "+sase", "#gh:sase")
+assert_expansion("Describe this repo. +", "+sase", "Describe this repo. +sase ", "+sase", "GitHub · #gh:sase")
+-- Replace-existing: any other workspace target in the segment is removed, so
+-- accepting a project always leaves exactly one.
+assert_expansion("#git:foo Fix bug +", "+sase", "Fix bug +sase ", "+sase", "GitHub · #gh:sase")
 -- Replace-existing with a HITL suffix on the old tag (the suffix is dropped).
-assert_expansion("#gh!!:foo do X +", "sase", "#gh:sase do X", "+sase", "#gh:sase")
+assert_expansion("#gh!!:foo do X +", "+sase", "do X +sase ", "+sase", "GitHub · #gh:sase")
 
 local client = vim.lsp.get_client_by_id(client_id)
 if client and client.stop then
