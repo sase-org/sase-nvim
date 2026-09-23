@@ -182,7 +182,10 @@ removal as `additionalTextEdits` edits, and `nvim-cmp` picks it up the same way 
 `cmp_nvim_lsp.default_capabilities()`. No extra Lua configuration is required. Pressing `<C-t>` on a `+query` asks the
 LSP for the same completion first; when the server is unavailable — or native completion is disabled, as with an
 `nvim-cmp` setup — it falls back to a project picker built from `sase project list --json` that inserts the chosen
-`+name` in place of the query. The completion catalog is materialized by `sase` at LSP launch and re-read per
+`+name` (with a trailing space) in place of the query. Unlike LSP accept, the picker replaces only the `+query`
+token: every other workspace target in the prompt stays. When `sase project list --json` fails, prints nothing, or
+prints invalid JSON, the picker warns and cancels instead of opening. The completion catalog is materialized by
+`sase` at LSP launch and re-read per
 request, so newly created or archived projects appear after the catalog is rewritten.
 
 Root ref completion is available inside registered VCS workflow refs before the namespace slash. Typing `:` or `(` after
@@ -241,7 +244,8 @@ Manual smoke check (`+` VCS project completion):
 2. Type a prompt followed by `+` (for example `Describe this repo. +`); the project menu opens. Filter with `+sa`.
 3. Accept a project and verify the prompt becomes `Describe this repo. +<project>` with any prior VCS tag removed.
 4. With the LSP disabled (`lsp.enabled = false`, `completion_backend = "picker"`), press `<C-t>` on `+sa` and verify
-   the project picker offers matching `+name` rows and inserts the chosen tag in place.
+   the project picker offers matching `+name` rows and inserts the chosen tag with a trailing space, leaving any
+   other workspace target in the prompt alone.
 
 The headless equivalent of this check lives in `tests/lsp_vcs_project_smoke.lua`; the picker fallback checks live in
 `tests/project_tag_picker.lua`.

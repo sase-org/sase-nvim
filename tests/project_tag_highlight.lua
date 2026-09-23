@@ -89,6 +89,14 @@ same(get_hl("SaseProjectTagSigil5").fg, hex_to_number(refreshed[6]), "palette re
 highlight.apply_palette(palette, { force = true })
 same(get_hl("SaseProjectTagAccent0").fg, 0x123456, "force apply keeps user customization")
 
+-- An override that keeps the palette foreground but changes other attributes
+-- survives a refresh: italic without bold is a customization, not tracking.
+vim.api.nvim_set_hl(0, "SaseProjectTagAccent5", { fg = hex_to_number(palette[6]), bold = true, italic = true })
+highlight.apply_palette(refreshed)
+local kept = get_hl("SaseProjectTagAccent5")
+same(kept.fg, hex_to_number(palette[6]), "italic override keeps its foreground through a refresh")
+same(kept.italic, true, "italic override keeps its italic through a refresh")
+
 -- --- initialize-result extraction ---------------------------------------
 
 same(highlight.palette_from_initialize_result(nil), nil, "nil result has no palette")
@@ -146,7 +154,13 @@ end
 
 same(highlight._token_group(token_of({ "sigil", "accent3" })), "SaseProjectTagSigil3", "sigil accent token maps to its dim sigil group")
 same(highlight._token_group(token_of({ "accent3" })), "SaseProjectTagAccent3", "name accent token maps to its accent group")
-same(highlight._token_group(token_of({ "accent17" })), "SaseProjectTagAccent17", "name accent token maps to its accent group")
+same(highlight._token_group(token_of({ sigil = true, accent3 = true })), "SaseProjectTagSigil3", "set-shaped sigil accent token maps to its dim sigil group")
+same(highlight._token_group(token_of({ accent3 = true })), "SaseProjectTagAccent3", "set-shaped name accent token maps to its accent group")
+same(highlight._token_group(token_of({ unknown = true })), "SaseProjectTagUnknown", "set-shaped unknown token maps to unknown group")
+same(highlight._token_group(token_of({ disabled = true })), "SaseProjectTagDisabled", "set-shaped disabled token maps to disabled group")
+same(highlight._token_group(token_of({ sigil = true })), "SaseProjectTagDisabled", "set-shaped accent-less sigil stays neutral")
+same(highlight._token_group(token_of({ accent17 = true })), "SaseProjectTagAccent17", "set-shaped name accent token maps to its accent group")
+same(highlight._token_group(token_of({ "accent17" })), "SaseProjectTagAccent17", "list-shaped name accent token maps to its accent group")
 same(highlight._sigil_group(3), "SaseProjectTagSigil3", "sigil group helper names the dim group")
 same(highlight._token_group(token_of({ "sigil", "unknown" })), "SaseProjectTagUnknown", "unknown sigil maps to unknown group")
 same(highlight._token_group(token_of({ "unknown" })), "SaseProjectTagUnknown", "unknown name maps to unknown group")
@@ -171,6 +185,14 @@ highlight._on_lsp_token_update({
 })
 same(#highlighted, 1, "sase project tag name token is highlighted")
 same(highlighted[1].group, "SaseProjectTagAccent3", "accent group is applied")
+
+reset_calls()
+highlight._on_lsp_token_update({
+	buf = 12,
+	data = { client_id = 7, token = token_of({ sigil = true, accent3 = true }) },
+})
+same(#highlighted, 1, "set-shaped sigil token is highlighted through the update path")
+same(highlighted[1].group, "SaseProjectTagSigil3", "dim sigil group is applied to the real modifier shape")
 
 reset_calls()
 highlight._on_lsp_token_update({

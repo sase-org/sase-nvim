@@ -123,36 +123,142 @@ local function hex_number(hex)
 	return tonumber(hex:sub(2), 16)
 end
 
+-- What this module last set for each palette-owned group, as `{ fg = number,
+-- bold = true|nil }`.
+local last_set = {}
+
+local function record_set(name, new_hex, bold)
+	last_set[name] = { fg = hex_number(new_hex), bold = bold == true and true or nil }
+end
+
 -- Sigil groups render the `+` in the tag's accent without the name's bold,
 -- matching the TUI chip (`dim <accent>` sigil, `bold <accent>` name).
 -- Neovim highlights have no `dim` attribute, so the non-bold fg carries it.
+local function safe_get_hl(name)
+	if vim.api.nvim_get_hl == nil then
+		return {}
+	end
+	local ok, hl = pcall(vim.api.nvim_get_hl, 0, { name = name })
+	if ok and type(hl) == "table" then
+		return hl
+	end
+	return {}
+end
+
 local function define_accent_groups(palette, default)
 	for index = 0, ACCENT_COUNT - 1 do
+		local accent_name = accent_group(index)
+		local sigil_name = sigil_group(index)
+		local before_accent = safe_get_hl(accent_name)
+		local before_sigil = safe_get_hl(sigil_name)
 		local accent_hl = { fg = palette[index + 1], bold = true }
 		local sigil_hl = { fg = palette[index + 1] }
 		if default then
 			accent_hl.default = true
 			sigil_hl.default = true
 		end
-		vim.api.nvim_set_hl(0, accent_group(index), accent_hl)
-		vim.api.nvim_set_hl(0, sigil_group(index), sigil_hl)
+		vim.api.nvim_set_hl(0, accent_name, accent_hl)
+		vim.api.nvim_set_hl(0, sigil_name, sigil_hl)
+		-- With `default = true` an existing user/colorscheme group wins
+		-- and the set is a no-op: only record groups we actually own.
+		-- A group is ours when it was unset before, or when it now
+		-- carries exactly the palette color we just applied.
+		if type(before_accent) ~= "table" or next(before_accent) == nil then
+			record_set(accent_name, palette[index + 1], true)
+		else
+			local after = safe_get_hl(accent_name)
+			if after.fg == hex_number(palette[index + 1]) and after.bold == true then
+				record_set(accent_name, palette[index + 1], true)
+			end
+		end
+		if type(before_sigil) ~= "table" or next(before_sigil) == nil then
+			record_set(sigil_name, palette[index + 1], nil)
+		else
+			local after = safe_get_hl(sigil_name)
+			if after.fg == hex_number(palette[index + 1]) and after.bold ~= true then
+				record_set(sigil_name, palette[index + 1], nil)
+			end
+		end
 	end
 end
 
+-- A refresh only touches a group that is unset or still identical to what
+-- this module last set; anything else is a user or colorscheme override
+-- (even one keeping the palette foreground with different attributes, such
+-- as italic without bold) and is left alone.
+local function full_hl(name)
+	local ok, hl = pcall(vim.api.nvim_get_hl, 0, { name = name })
+	if ok and type(hl) == "table" then
+		return hl
+	end
+	return {}
+end
+
+-- Styling keys this module never sets. Any of them present on the current
+-- group means someone else customized it.
+local EXTRA_STYLE_KEYS = {
+	"bg",
+	"link",
+	"italic",
+	"underline",
+	"undercurl",
+	"underdouble",
+	"underdotted",
+	"underdashed",
+	"strikethrough",
+	"reverse",
+	"standout",
+	"nocombine",
+}
+
+local function has_extra_style(hl)
+	for _, key in ipairs(EXTRA_STYLE_KEYS) do
+		if hl[key] ~= nil then
+			return true
+		end
+	end
+	return false
+end
+
+local function hl_matches(hl, fg_number, bold)
+	if (hl.fg or nil) ~= (fg_number or nil) then
+		return false
+	end
+	if (hl.bold == true) ~= (bold == true) then
+		return false
+	end
+	return not has_extra_style(hl)
+end
+
 -- Define one palette-owned group, preserving user and colorscheme overrides:
--- a group whose current color differs from the previous palette color is
--- left alone, while unset groups and groups still carrying the previous
--- palette color track the new palette.
+-- a group that is unset or still identical to what this module last set
+-- tracks the new palette, while anything else is left alone.
 local function track_palette_group(name, new_hex, old_fg, bold)
-	local current = hl_fg(name)
-	if current ~= nil and current ~= old_fg then
+	local current = full_hl(name)
+	local should_set = false
+	if next(current) == nil then
+		should_set = true
+	else
+		local record = last_set[name]
+		if record ~= nil then
+			should_set = hl_matches(current, record.fg, record.bold)
+		else
+			-- No record yet (e.g. groups defined before this module
+			-- started tracking): treat the group as ours only when it
+			-- carries the previous palette color with no extra styling.
+			should_set = hl_matches(current, old_fg, bold)
+		end
+	end
+	if not should_set then
 		return
 	end
+	local was_unset = next(current) == nil
 	local hl = { fg = new_hex, bold = bold }
-	if current == nil then
+	if was_unset then
 		hl.default = true
 	end
 	vim.api.nvim_set_hl(0, name, hl)
+	record_set(name, new_hex, bold)
 end
 
 local function track_palette(palette, old)
@@ -197,9 +303,14 @@ local function modifier_set(token)
 	if type(modifiers) ~= "table" then
 		return set
 	end
-	for _, modifier in ipairs(modifiers) do
-		if type(modifier) == "string" then
-			set[modifier] = true
+	-- Neovim 0.10+ passes semantic-token modifiers as a set
+	-- (`{ sigil = true, accent3 = true }`); older shapes and these tests
+	-- use a list (`{ "sigil", "accent3" }`). Accept both.
+	for key, value in pairs(modifiers) do
+		if type(value) == "string" then
+			set[value] = true
+		elseif value == true and type(key) == "string" then
+			set[key] = true
 		end
 	end
 	return set
