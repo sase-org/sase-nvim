@@ -44,7 +44,27 @@ do
 	end
 end
 same(alt.plan_separator("plain", 3), nil, "separator outside span returns nil")
-same(alt.plan_separator("a%{foo}", 5), nil, "separator ignores non-directive opener")
+same(
+	alt.plan_separator("a%{foo}", 6),
+	{ start = 3, stop = 6, text = "foo | ", cursor = 9 },
+	"separator plans mid-word opener"
+)
+same(
+	alt.plan_separator("foo%{bar}", 8),
+	{ start = 5, stop = 8, text = "bar | ", cursor = 11 },
+	"separator plans mid-word closed span"
+)
+same(
+	alt.plan_separator("foo%{bar", 8),
+	{ start = 5, stop = 8, text = "bar | ", cursor = 11 },
+	"separator plans mid-word unclosed span"
+)
+same(
+	alt.plan_separator("%{a %{x|y} b}", 7),
+	{ start = 6, stop = 7, text = "x | ", cursor = 10 },
+	"separator prefers innermost nested span"
+)
+same(alt.plan_separator("`%{a|b}`", 5), nil, "separator ignores opener inside inline code")
 
 -- plan_brace_padding: two spaces after the native `{`, never a closing brace.
 same(alt.plan_brace_padding("%{", 2), { start = 2, stop = 2, text = "  ", cursor = 3 }, "brace padding simple")
@@ -64,7 +84,17 @@ same(
 	"brace padding before trailing punctuation"
 )
 same(alt.plan_brace_padding("word{", 5), nil, "brace padding requires percent")
-same(alt.plan_brace_padding("a%{", 3), nil, "brace padding ignores non-directive percent")
+same(
+	alt.plan_brace_padding("a%{", 3),
+	{ start = 3, stop = 3, text = "  ", cursor = 4 },
+	"brace padding plans mid-word opener"
+)
+same(
+	alt.plan_brace_padding("foo%{", 5),
+	{ start = 5, stop = 5, text = "  ", cursor = 6 },
+	"brace padding plans longer mid-word opener"
+)
+same(alt.plan_brace_padding("`%{", 3), nil, "brace padding ignores opener inside inline code")
 same(alt.plan_brace_padding("%{word", 2), nil, "brace padding rejects unsafe following character")
 same(alt.plan_brace_padding('%{"', 2), nil, "brace padding rejects ambiguous quote")
 
@@ -120,6 +150,15 @@ do
 	type_in(buf, "i%{")
 	same(vim.api.nvim_get_current_line(), "%{  ", "e2e brace padding text")
 	same(vim.api.nvim_win_get_cursor(0), { 1, 3 }, "e2e brace padding cursor")
+end
+
+-- `%{` pads mid-word too: `foo%` + `{` becomes `foo%{  `.
+do
+	local buf = make_buffer("sase", tmp .. "_e1b.sase")
+	set_line(buf, "foo%", 1, 0)
+	type_in(buf, "A{")
+	same(vim.api.nvim_get_current_line(), "foo%{  ", "e2e mid-word brace padding text")
+	same(vim.api.nvim_win_get_cursor(0), { 1, 6 }, "e2e mid-word brace padding cursor")
 end
 
 -- Typing `|` inside `%{foo}` yields `%{foo | }` with the cursor before `}`.

@@ -407,8 +407,11 @@ buffers (under canonical `sase/xprompts/`, packaged `default_xprompts/`, or matc
 `allow_all_markdown`. Both features are on by default after `setup()` and
 inherit the LSP filetype and `allow_all_markdown` settings.
 
-**Highlighting** marks each part of a fan-out with its own highlight group, so delimiters read differently from branch
-separators:
+**Highlighting** comes from the xprompt LSP: the server scans each prompt for alternations and this plugin overlays its
+own highlight groups on the server's semantic tokens, so delimiters read differently from branch separators. There is
+no Lua copy of the alternation grammar — `%{` opens anywhere outside literal zones, including mid-word
+(`foo%{bar | baz}qux`) — while the legacy `%(`/`%alt(` forms still need a directive-valid position. Highlighting
+requires a Neovim with `LspTokenUpdate` support; without it the groups below stay defined but nothing is colored:
 
 | Highlight group     | Spans                            | Default link |
 | ------------------- | -------------------------------- | ------------ |
@@ -422,14 +425,16 @@ Override the look by linking or defining those groups in your colorscheme (e.g.
 
 **Editing** mirrors the prompt input in sase's TUI for `%{...}` shorthand spacing:
 
-- Typing `{` immediately after a directive-valid `%` inserts two spaces after the opening brace and parks the cursor
-  after the first space. The plugin does not insert the closing `}`; use your normal editor auto-pair plugin for brace
+- Typing `{` immediately after any `%` inserts two spaces after the opening brace and parks the cursor
+  after the first space, including mid-word (`foo%` + `{` becomes `foo%{  `). Openers inside inline code are ignored.
+  The plugin does not insert the closing `}`; use your normal editor auto-pair plugin for brace
   pairing. Padding fires at end of line, before whitespace, before a bracket closer (`)`, `]`, `}`, `>`), and before
   trailing punctuation (`.`, `,`, `;`, `:`, `!`, `?`); it remains suppressed before word characters and other
   token-opening characters.
 - Typing `|` inside a live `%{...}` span inserts a padded ` | ` separator, keeps the cursor before the closing `}`, and
   normalizes comma spacing in the current branch — for example, typing `|` after `%{foo ,bar, and baz` yields
-  `%{foo, bar, and baz | }`.
+  `%{foo, bar, and baz | }`. When alternations nest, the innermost enclosing span wins; an unclosed span never reaches
+  past its own line.
 
 The plugin does not perform paired deletion for an empty `%{}`. The `#@` xprompt picker trigger and ordinary `{` / `|`
 typing outside a `%{...}` context are unaffected.
@@ -440,8 +445,9 @@ Configure or disable either feature through `setup()`:
 require("sase").setup({
   alt_highlight = {
     enabled = true,             -- default
-    allow_all_markdown = false, -- inherits from lsp.allow_all_markdown by default
-    -- filetypes = { "markdown", "gitcommit", "sase", "sase_prompt" }, -- inherits from lsp.filetypes
+    -- allow_all_markdown / filetypes are accepted for backward compatibility
+    -- but no longer gate anything: the server owns buffer eligibility.
+    -- debounce_ms / max_lines / max_bytes are likewise accepted and ignored.
   },
   alt_editing = {
     enabled = true,             -- default
@@ -451,8 +457,8 @@ require("sase").setup({
 })
 ```
 
-The legacy `%(A, B)` shorthand still launches correctly, but new prompts should prefer `%{A | B}`; only the brace form
-is highlighted and separator-edited.
+The legacy `%(A, B)` shorthand still launches correctly, but new prompts should prefer `%{A | B}`; separator editing
+covers only the brace form, and highlighting follows the server grammar for both.
 
 ## Requirements
 

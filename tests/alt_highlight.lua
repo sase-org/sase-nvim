@@ -1,5 +1,9 @@
 -- Headless tests for lua/sase/alt_highlight.lua.
 -- Run: nvim --headless -u NONE -c "set rtp+=." -l tests/alt_highlight.lua
+--
+-- Highlighting is an LSP-token overlay: the xprompt LSP owns the alternation
+-- grammar and this module maps tokens carrying the `alternation` modifier
+-- onto the long-lived `SaseAlt*` groups via `LspTokenUpdate`.
 
 package.path = vim.fn.getcwd() .. "/lua/?.lua;" .. vim.fn.getcwd() .. "/lua/?/init.lua;" .. package.path
 
@@ -18,149 +22,190 @@ local function same(actual, expected, label)
 	end
 end
 
--- Find a span by group + columns within a scan_line result.
-local function has_span(spans, start_col, end_col, group)
-	for _, span in ipairs(spans) do
-		if span.start_col == start_col and span.end_col == end_col and span.group == group then
-			return true
-		end
+local function get_hl(name)
+	if vim.api.nvim_get_hl then
+		return vim.api.nvim_get_hl(0, { name = name, link = true })
 	end
-	return false
+	return vim.api.nvim_get_hl_by_name(name, true)
 end
 
-local function count_group(spans, group)
-	local n = 0
-	for _, span in ipairs(spans) do
-		if span.group == group then
-			n = n + 1
-		end
-	end
-	return n
-end
-
-local function assert_span(spans, start_col, end_col, group, label)
-	if not has_span(spans, start_col, end_col, group) then
-		fail(string.format("%s: missing %s span [%d,%d) in %s", label, group, start_col, end_col, vim.inspect(spans)))
-	end
-end
-
--- --- scan_line: span placement --------------------------------------------
-
-do
-	-- "%{a | b}" -> opener, closer, one separator; no branch names.
-	local spans = alt.scan_line("%{a | b}")
-	assert_span(spans, 0, 2, "SaseAltDelimiter", "basic opener")
-	assert_span(spans, 7, 8, "SaseAltDelimiter", "basic closer")
-	assert_span(spans, 4, 5, "SaseAltSeparator", "basic separator")
-	same(count_group(spans, "SaseAltSeparator"), 1, "basic separator count")
-	same(count_group(spans, "SaseAltBranchName"), 0, "basic has no branch names")
-	same(count_group(spans, "SaseAltError"), 0, "basic has no errors")
-end
-
-do
-	-- Named branches: "%{sec=[[security]] | perf=[[performance]]}".
-	local line = "%{sec=[[security]] | perf=[[performance]]}"
-	local spans = alt.scan_line(line)
-	assert_span(spans, 2, 5, "SaseAltBranchName", "named branch sec")
-	assert_span(spans, 21, 25, "SaseAltBranchName", "named branch perf")
-	same(count_group(spans, "SaseAltSeparator"), 1, "named branch separator count")
-	-- The `]]`/`[[` text-block brackets must not be mistaken for separators.
-	same(count_group(spans, "SaseAltDelimiter"), 2, "named branch delimiter count")
-end
-
-do
-	-- Commas inside a branch are literal text, not separators.
-	local spans = alt.scan_line("%{foo, bar | baz}")
-	same(count_group(spans, "SaseAltSeparator"), 1, "comma branch separator count")
-	assert_span(spans, 11, 12, "SaseAltSeparator", "comma branch separator position")
-	same(count_group(spans, "SaseAltBranchName"), 0, "comma branch has no names")
-end
-
-do
-	-- Unmatched opener is an error, with no delimiter pair.
-	local spans = alt.scan_line("%{foo")
-	assert_span(spans, 0, 2, "SaseAltError", "unmatched opener error")
-	same(count_group(spans, "SaseAltDelimiter"), 0, "unmatched opener has no delimiters")
-end
-
-do
-	-- A `%{` that is not in a directive-valid position is ignored.
-	local spans = alt.scan_line("a%{b}")
-	same(#spans, 0, "invalid-prefix produces no spans")
-end
-
-do
-	-- A `%{` opened right after `(` is valid.
-	local spans = alt.scan_line("(%{x|y})")
-	assert_span(spans, 1, 3, "SaseAltDelimiter", "paren-prefixed opener")
-	assert_span(spans, 4, 5, "SaseAltSeparator", "paren-prefixed separator")
-end
-
-do
-	-- Pipes inside backtick spans are not separators.
-	local spans = alt.scan_line("%{`a|b` | c}")
-	same(count_group(spans, "SaseAltSeparator"), 1, "backtick separator count")
-	assert_span(spans, 8, 9, "SaseAltSeparator", "backtick separator position")
-end
-
--- --- supports_buffer: attach eligibility ----------------------------------
+-- --- default highlight groups -------------------------------------------
 
 alt.setup({})
 
-local function make_buffer(ft, name)
-	local buf = vim.api.nvim_create_buf(false, true)
-	if name then
-		vim.api.nvim_buf_set_name(buf, name)
-	end
-	vim.bo[buf].filetype = ft
-	return buf
+same(get_hl("SaseAltDelimiter").link, "Delimiter", "SaseAltDelimiter default link")
+same(get_hl("SaseAltSeparator").link, "Operator", "SaseAltSeparator default link")
+same(get_hl("SaseAltBranchName").link, "Identifier", "SaseAltBranchName default link")
+same(get_hl("SaseAltError").link, "Error", "SaseAltError default link")
+
+vim.api.nvim_set_hl(0, "SaseAltDelimiter", { bold = true })
+alt.define_highlights()
+local overridden_hl = get_hl("SaseAltDelimiter")
+same(overridden_hl.bold, true, "user-defined SaseAltDelimiter survives default refresh")
+same(overridden_hl.link, nil, "default refresh does not overwrite user SaseAltDelimiter")
+
+-- --- token -> group mapping ----------------------------------------------
+
+-- List-shaped modifiers (older shape, also used here).
+same(
+	alt._token_group({ type = "operator", modifiers = { "alternation" } }),
+	"SaseAltDelimiter",
+	"operator + alternation maps to delimiter"
+)
+same(
+	alt._token_group({ type = "operator", modifiers = { "alternation", "separator" } }),
+	"SaseAltSeparator",
+	"separator maps to separator group"
+)
+same(
+	alt._token_group({ type = "parameter", modifiers = { "alternation" } }),
+	"SaseAltBranchName",
+	"parameter + alternation maps to branch name"
+)
+same(
+	alt._token_group({ type = "operator", modifiers = { "alternation", "unknown" } }),
+	"SaseAltError",
+	"unclosed opener maps to error"
+)
+-- Set-shaped modifiers (Neovim 0.10+).
+same(
+	alt._token_group({ type = "operator", modifiers = { alternation = true } }),
+	"SaseAltDelimiter",
+	"set-shaped alternation maps to delimiter"
+)
+same(
+	alt._token_group({ type = "operator", modifiers = { alternation = true, separator = true } }),
+	"SaseAltSeparator",
+	"set-shaped separator maps to separator group"
+)
+same(
+	alt._token_group({ type = "parameter", modifiers = { alternation = true } }),
+	"SaseAltBranchName",
+	"set-shaped parameter maps to branch name"
+)
+same(
+	alt._token_group({ type = "operator", modifiers = { alternation = true, unknown = true } }),
+	"SaseAltError",
+	"set-shaped unclosed opener maps to error"
+)
+-- Tokens without the alternation modifier stay colorscheme-owned.
+same(alt._token_group({ type = "operator" }), nil, "bare operator is ignored")
+same(alt._token_group({ type = "operator", modifiers = {} }), nil, "modifier-less operator is ignored")
+same(alt._token_group({ type = "parameter" }), nil, "bare parameter is ignored")
+same(alt._token_group({ type = "parameter", modifiers = { "documentation" } }), nil, "foreign parameter is ignored")
+same(
+	alt._token_group({ type = "string", modifiers = { "alternation" } }),
+	nil,
+	"unexpected alternation type is ignored"
+)
+same(alt._token_group(nil), nil, "nil token is ignored")
+
+-- --- LspTokenUpdate callback filtering -----------------------------------
+
+vim.lsp.semantic_tokens = vim.lsp.semantic_tokens or {}
+
+local original_highlight_token = vim.lsp.semantic_tokens.highlight_token
+local original_get_client_by_id = vim.lsp.get_client_by_id
+local highlighted = {}
+local clients = {
+	[7] = { name = "sase-xprompt-lsp" },
+	[8] = { name = "foreign-lsp" },
+}
+
+vim.lsp.semantic_tokens.highlight_token = function(token, bufnr, client_id, group)
+	highlighted[#highlighted + 1] = {
+		token = token,
+		bufnr = bufnr,
+		client_id = client_id,
+		group = group,
+	}
 end
 
-local tmp = vim.fn.tempname()
-
-same(alt.supports_buffer(make_buffer("sase", tmp .. "_a.sase")), true, "sase filetype eligible")
-same(alt.supports_buffer(make_buffer("sase_prompt", tmp .. "_b")), true, "sase_prompt filetype eligible")
-same(alt.supports_buffer(make_buffer("gitcommit", tmp .. "_COMMIT_EDITMSG")), true, "gitcommit eligible")
-same(alt.supports_buffer(make_buffer("lua", tmp .. "_c.lua")), false, "unrelated filetype not eligible")
-same(alt.supports_buffer(make_buffer("markdown", tmp .. "_notes.md")), false, "plain markdown not eligible")
-same(
-	alt.supports_buffer(make_buffer("markdown", "/work/sase/xprompts/" .. vim.fn.fnamemodify(tmp, ":t") .. ".md")),
-	true,
-	"markdown under canonical sase/xprompts/ eligible"
-)
-same(
-	alt.supports_buffer(make_buffer("markdown", "/work/sase_prompt_" .. vim.fn.fnamemodify(tmp, ":t") .. ".md")),
-	true,
-	"markdown prompt-temp name eligible"
-)
-
--- With allow_all_markdown, ordinary markdown becomes eligible.
-alt.setup({ allow_all_markdown = true })
-same(
-	alt.supports_buffer(make_buffer("markdown", tmp .. "_notes2.md")),
-	true,
-	"allow_all_markdown enables plain markdown"
-)
-
--- --- highlight_buffer: extmarks applied (and gated) -----------------------
-
-alt.setup({})
-local ns = vim.api.nvim_get_namespaces()["sase_alt_highlight"]
-if not ns then
-	fail("namespace sase_alt_highlight not registered")
-else
-	local eligible = make_buffer("sase", tmp .. "_hl.sase")
-	vim.api.nvim_buf_set_lines(eligible, 0, -1, false, { "%{a | b}" })
-	alt.highlight_buffer(eligible)
-	local marks = vim.api.nvim_buf_get_extmarks(eligible, ns, 0, -1, {})
-	same(#marks, 3, "eligible buffer gets 3 extmarks")
-
-	local ineligible = make_buffer("markdown", tmp .. "_hl_notes.md")
-	vim.api.nvim_buf_set_lines(ineligible, 0, -1, false, { "%{a | b}" })
-	alt.highlight_buffer(ineligible)
-	local none = vim.api.nvim_buf_get_extmarks(ineligible, ns, 0, -1, {})
-	same(#none, 0, "ineligible buffer gets no extmarks")
+vim.lsp.get_client_by_id = function(client_id)
+	return clients[client_id]
 end
+
+local function reset_calls()
+	highlighted = {}
+end
+
+alt.setup({ enabled = true })
+
+local delimiter_token = { type = "operator", modifiers = { alternation = true } }
+alt._on_lsp_token_update({
+	buf = 12,
+	data = { client_id = 7, token = delimiter_token },
+})
+same(#highlighted, 1, "sase delimiter token is highlighted")
+same(highlighted[1].group, "SaseAltDelimiter", "delimiter group is applied")
+
+reset_calls()
+alt._on_lsp_token_update({
+	buf = 12,
+	data = { client_id = 7, token = { type = "operator", modifiers = { "alternation", "separator" } } },
+})
+same(#highlighted, 1, "sase separator token is highlighted")
+same(highlighted[1].group, "SaseAltSeparator", "separator group is applied")
+
+reset_calls()
+alt._on_lsp_token_update({
+	buf = 12,
+	data = { client_id = 7, token = { type = "parameter", modifiers = { "alternation" } } },
+})
+same(#highlighted, 1, "sase branch-name token is highlighted")
+same(highlighted[1].group, "SaseAltBranchName", "branch-name group is applied")
+
+reset_calls()
+alt._on_lsp_token_update({
+	buf = 12,
+	data = { client_id = 7, token = { type = "operator", modifiers = { "alternation", "unknown" } } },
+})
+same(#highlighted, 1, "sase error token is highlighted")
+same(highlighted[1].group, "SaseAltError", "error group is applied")
+
+reset_calls()
+alt._on_lsp_token_update({
+	buf = 12,
+	data = { client_id = 7, token = { type = "operator" } },
+})
+same(#highlighted, 0, "non-alternation operator stays colorscheme-owned")
+
+reset_calls()
+alt._on_lsp_token_update({
+	buf = 12,
+	data = { client_id = 8, token = delimiter_token },
+})
+same(#highlighted, 0, "foreign LSP client is ignored")
+
+reset_calls()
+alt.setup({ enabled = false })
+alt._on_lsp_token_update({
+	buf = 12,
+	data = { client_id = 7, token = delimiter_token },
+})
+same(#highlighted, 0, "disabled alt highlighting is ignored")
+
+-- --- legacy setup keys are accepted ---------------------------------------
+
+alt.setup({ enabled = true, debounce_ms = 10, max_lines = 100, max_bytes = 1000 })
+same(alt._config().enabled, true, "legacy scan bounds are accepted")
+alt.setup({ enabled = true, filetypes = { "sase" }, allow_all_markdown = true })
+same(alt._config().enabled, true, "legacy filetype keys are accepted")
+
+-- --- top-level setup wiring ----------------------------------------------
+
+require("sase").setup({
+	lsp = { enabled = false },
+	glossary_highlight = { enabled = false },
+	xprompt_highlight = { enabled = false },
+	alt_highlight = { enabled = false },
+	alt_editing = { enabled = false },
+	xprompt_spacer = { enabled = false },
+})
+same(alt._config().enabled, false, "top-level setup forwards alt_highlight opts")
+
+vim.lsp.semantic_tokens.highlight_token = original_highlight_token
+vim.lsp.get_client_by_id = original_get_client_by_id
 
 if failures > 0 then
 	error(string.format("%d alt_highlight test(s) failed", failures), 0)

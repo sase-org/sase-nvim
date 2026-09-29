@@ -4,10 +4,9 @@
 -- `src/sase/ace/tui/widgets/_alt_syntax_editing.py` so Neovim and the TUI
 -- behave identically while typing an alt directive:
 --
---   * typing `{` immediately after a directive-valid `%` inserts two padding
---     spaces after the natively-typed `{`, leaving any closing `}` to the
---     user's normal auto-pair plugin and keeping the cursor after the first
---     space.
+--   * typing `{` immediately after any `%` inserts two padding spaces after
+--     the natively-typed `{`, leaving any closing `}` to the user's normal
+--     auto-pair plugin and keeping the cursor after the first space.
 --
 --   * typing `|` inside a live `%{...}` span normalizes the current branch's
 --     comma spacing and appends a padded ` | ` separator, keeping the cursor
@@ -22,18 +21,6 @@ local M = {}
 
 local DEFAULT_FILETYPES = { "markdown", "gitcommit", "sase", "sase_prompt" }
 local GROUP = "SaseAltEdit"
-
--- Characters that may legally precede a `%{` alt opener, matching the
--- sase-core directive-position rule and the ACE `_DIRECTIVE_OPENING_CONTEXTS`
--- set.
-local VALID_PREFIX = {
-	[":"] = true,
-	["("] = true,
-	["["] = true,
-	["{"] = true,
-	['"'] = true,
-	["'"] = true,
-}
 
 local PAIR_SAFE_CLOSE = {
 	[")"] = true,
@@ -74,19 +61,35 @@ end
 -- column reported by `nvim_win_get_cursor` and the ACE helpers' `offset`. A
 -- character at 0-indexed position `i` is `line:sub(i + 1, i + 1)`.
 
--- Return true when the `%` at 0-indexed `percent_index` may open a `%{`.
-local function is_directive_valid_brace_opening(line, percent_index)
+-- Return true when the 0-indexed byte `index` falls inside a backtick span
+-- on `line` (inline code). The planners only see one line, so this is the
+-- line-visible part of the literal zones: fenced blocks and
+-- `%xprompts_enabled:false` regions span lines and are owned by the server.
+local function in_backtick_span(line, index)
+	local in_backtick = false
+	for i = 0, #line - 1 do
+		if i == index then
+			return in_backtick
+		end
+		if line:sub(i + 1, i + 1) == "`" then
+			in_backtick = not in_backtick
+		end
+	end
+	return in_backtick
+end
+
+-- Return true when the `%` at 0-indexed `percent_index` opens a live `%{`.
+-- Under the mid-word grammar any `%` directly before `{` is an opener,
+-- except inside inline code: the legacy directive-position rule no longer
+-- applies to the brace form.
+local function is_live_brace_opening(line, percent_index)
 	if percent_index < 0 or percent_index >= #line then
 		return false
 	end
 	if line:sub(percent_index + 1, percent_index + 1) ~= "%" then
 		return false
 	end
-	if percent_index == 0 then
-		return true
-	end
-	local previous = line:sub(percent_index, percent_index)
-	return previous:match("%s") ~= nil or VALID_PREFIX[previous] == true
+	return not in_backtick_span(line, percent_index)
 end
 
 local function next_char_allows_brace_padding(line, offset)
@@ -126,27 +129,36 @@ local function find_matching_brace(line, open_index)
 end
 
 -- Return `(content_start, content_end)` of the `%{...}` enclosing `offset`, or
--- nil when `offset` is not inside any directive-valid span. `content_start` is
--- just after the `{`; `content_end` is the matching `}` (or `#line` when the
--- span is still unclosed). Mirrors the ACE `_find_enclosing_alt_span`.
+-- nil when `offset` is not inside any live span. `content_start` is just
+-- after the `{`; `content_end` is the matching `}` (or `#line` when the span
+-- is still unclosed, so an unclosed opener never reaches past its own line).
+-- When alternations nest, the innermost enclosing span wins. Mirrors the ACE
+-- `_find_enclosing_alt_span`.
 local function find_enclosing_alt_span(line, offset)
+	local best_start, best_end = nil, nil
 	local search_from = 0
 	while true do
 		local found = line:find("%{", search_from + 1, true)
 		if not found then
-			return nil
+			break
 		end
 		local index = found - 1
-		if is_directive_valid_brace_opening(line, index) then
+		if is_live_brace_opening(line, index) then
 			local content_start = index + 2
 			local close = find_matching_brace(line, index + 1)
 			local content_end = close == nil and #line or close
 			if content_start <= offset and offset <= content_end then
-				return content_start, content_end
+				if best_start == nil or content_start > best_start then
+					best_start, best_end = content_start, content_end
+				end
 			end
 		end
 		search_from = index + 2
 	end
+	if best_start == nil then
+		return nil
+	end
+	return best_start, best_end
 end
 
 -- Return the 0-indexed position of the last top-level `|` in [content_start,
@@ -239,7 +251,7 @@ function M.plan_brace_padding(line, offset)
 	if open_index < 1 or line:sub(open_index + 1, open_index + 1) ~= "{" then
 		return nil
 	end
-	if not is_directive_valid_brace_opening(line, open_index - 1) then
+	if not is_live_brace_opening(line, open_index - 1) then
 		return nil
 	end
 	if not next_char_allows_brace_padding(line, offset) then
