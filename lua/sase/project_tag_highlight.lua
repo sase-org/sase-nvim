@@ -1,6 +1,6 @@
 -- Accent-colored highlighting for SASE project tags (`+sase`).
 --
--- The xprompt LSP emits each project tag as two `saseProjectTag` semantic
+-- The macro LSP emits each project tag as two `saseProjectTag` semantic
 -- tokens (the `+` sigil plus the name) with `accentN` modifiers resolved from
 -- the Python-owned 18-color palette. The palette itself arrives in the
 -- server's initialize result at
@@ -13,7 +13,7 @@
 
 local M = {}
 
-local CLIENT_NAME = "sase-xprompt-lsp"
+local CLIENT_NAME = "sase-macro-lsp"
 local GROUP = "SaseProjectTagHighlight"
 local TOKEN_TYPE = "saseProjectTag"
 

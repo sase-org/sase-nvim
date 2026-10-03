@@ -1,6 +1,6 @@
 -- Project-tag ("+project") picker fallback.
 --
--- Used when the xprompt LSP cannot serve `+query` completion: no server is
+-- Used when the macro LSP cannot serve `+query` completion: no server is
 -- attached, or native completion is disabled (e.g. nvim-cmp owns LSP
 -- completion, so `sase.lsp.complete()` returns false). Offers projects from
 -- `sase project list --json` (its `tag` field) and inserts the chosen `+name`

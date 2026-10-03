@@ -34,7 +34,7 @@ same(token.is_project_tag_like(nil), false, "nil is not tag-like")
 
 same(token.classify("+"), "project_tag", "bare plus classifies as project_tag")
 same(token.classify("+sase"), "project_tag", "tag query classifies as project_tag")
-same(token.classify("#plan"), "xprompt", "hash ref still classifies as xprompt")
+same(token.classify("#plan"), "macro", "hash ref still classifies as macro")
 same(token.classify(nil), "file_history", "empty token still classifies as file_history")
 
 -- --- cursor extraction ---------------------------------------------------

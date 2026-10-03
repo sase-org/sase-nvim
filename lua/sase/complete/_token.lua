@@ -1,5 +1,5 @@
 -- Token extraction + classification helpers for the <C-t> picker fallback.
--- Normal completion is served by the xprompt LSP.
+-- Normal completion is served by the macro LSP.
 
 local M = {}
 
@@ -150,11 +150,13 @@ function M.token_under_cursor()
 	}
 end
 
---- True when *token* looks like an xprompt reference (`#foo`, `#!foo`, `#foo.bar`).
---- Mirrors xprompt_completion.is_xprompt_like_token.
+--- True when *token* looks like a macro reference (`#foo`, `#!foo`, `#foo.bar`).
+--- Mirrors the TUI's `#token` classifier until the sase TUI phase renames it.
+--- (Today: xprompt_completion.is_xprompt_like_token; spelled the legacy way
+--- here only because that is still the file's real name.)
 --- @param token string|nil
 --- @return boolean
-function M.is_xprompt_like(token)
+function M.is_macro_like(token)
 	if not token or token == "" then
 		return false
 	end
@@ -231,7 +233,7 @@ end
 --- An empty / nil token means "cursor isn't on any token" which the TUI
 --- maps to file-history completion, so we do the same here.
 --- @param token string|nil
---- @return "xprompt"|"project_tag"|"file"|"file_history"|nil
+--- @return "macro"|"project_tag"|"file"|"file_history"|nil
 function M.classify(token)
 	if not token or token == "" then
 		return "file_history"
@@ -239,11 +241,11 @@ function M.classify(token)
 	if M.is_project_tag_like(token) then
 		return "project_tag"
 	end
-	if M.is_xprompt_like(token) then
-		return "xprompt"
+	if M.is_macro_like(token) then
+		return "macro"
 	end
 	if M.is_slash_skill_like(token) then
-		return "xprompt"
+		return "macro"
 	end
 	if M.is_path_like(token) then
 		return "file"

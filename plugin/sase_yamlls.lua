@@ -3,7 +3,9 @@
 -- startup is never blocked.
 
 --- Resolve a schema path via `sase path <name>` and call `on_resolved(path)`.
-local function resolve_schema(name, on_resolved)
+--- When `fallback_name` is given and the primary target resolves to nothing
+--- (an older sase that predates the rename), the fallback target is tried.
+local function resolve_schema(name, on_resolved, fallback_name)
   vim.fn.jobstart({ "sase", "path", name }, {
     stdout_buffered = true,
     on_stdout = function(_, data)
@@ -13,6 +15,8 @@ local function resolve_schema(name, on_resolved)
       local schema = vim.fn.trim(table.concat(data, "\n"))
       if schema ~= "" then
         on_resolved(schema)
+      elseif fallback_name then
+        resolve_schema(fallback_name, on_resolved)
       end
     end,
   })
@@ -72,10 +76,14 @@ resolve_schema("config-schema", function(schema)
   })
 end)
 
--- xprompt workflow files under the canonical project layout
-resolve_schema("xprompts-schema", function(schema)
+-- macro workflow files under the canonical project layout, plus the legacy
+-- layout for definitions written before the rename
+-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+resolve_schema("macros-schema", function(schema)
   apply_schema(schema, {
+    "**/sase/macros/**/*.yml",
+    "**/sase/macros/**/*.yaml",
     "**/sase/xprompts/**/*.yml",
     "**/sase/xprompts/**/*.yaml",
   })
-end)
+end, "xprompts-schema")

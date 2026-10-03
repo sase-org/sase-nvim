@@ -3,7 +3,7 @@
 ## Overview
 
 Neovim plugin for [sase](https://github.com/sase-org/sase) integration. Provides filetype detection and syntax
-highlighting for project spec files, plus YAML language server schema configuration for sase config and xprompt files.
+highlighting for project spec files, plus YAML language server schema configuration for sase config and macro files.
 
 ## Features
 
@@ -22,12 +22,12 @@ Automatic detection and syntax highlighting for canonical project spec files
 
 ### `<C-t>` Completion Dispatcher (opt-in)
 
-Insert-mode `<C-t>` asks the SASE xprompt LSP for completion when available, then falls back to the picker dispatcher
+Insert-mode `<C-t>` asks the SASE macro LSP for completion when available, then falls back to the picker dispatcher
 when the server command is unavailable or disabled:
 
 | Cursor on…                                   | Opens…                                                   |
 | -------------------------------------------- | -------------------------------------------------------- |
-| `#token` / `#!token` (xprompt reference)     | LSP completion, or xprompt picker                        |
+| `#token` / `#!token` (macro reference)     | LSP completion, or macro picker                        |
 | `/skill` / `/partial` (slash skill)          | LSP completion, or skill-filtered picker                 |
 | `%directive`                                 | LSP directive completion                                 |
 | `+` / `+project` (project tag trigger)        | LSP project-tag completion, or project picker (`+sase`)  |
@@ -49,24 +49,24 @@ require("sase").setup({
   },
   lsp = {
     enabled = true,
-    cmd = nil, -- string/table override; otherwise SASE_XPROMPT_LSP_CMD, `sase lsp`, or `sase-xprompt-lsp`
+    cmd = nil, -- string/table override; otherwise SASE_MACRO_LSP_CMD, `sase lsp`, or `sase-macro-lsp`
     allow_all_markdown = false, -- set true to attach to every Markdown buffer
     native_completion = "auto", -- true, false, or "auto"
   },
 })
 ```
 
-`completion_backend = "auto"` is the default. It uses the LSP when `sase lsp --version` succeeds or `sase-xprompt-lsp`
+`completion_backend = "auto"` is the default. It uses the LSP when `sase lsp --version` succeeds or `sase-macro-lsp`
 is executable, and otherwise keeps the existing picker behavior. Set `completion_backend = "picker"` or
 `lsp.enabled = false` to keep the picker-only path. `lsp.native_completion = "auto"` enables Neovim's native
 `vim.lsp.completion` frontend unless `nvim-cmp` / `cmp_nvim_lsp` is detected. Set it to `false` when `nvim-cmp` should
 own LSP completion and snippet expansion.
 
-The xprompt picker uses `sase xprompt list` insertion metadata. Inline xprompts and embeddable workflows insert
+The macro picker uses `sase macro list` insertion metadata. Inline macros and embeddable workflows insert
 as `#name`; standalone workflows insert as `#!name`. Typing `#!` before `<C-t>` filters the picker to standalone
-workflows. Typing `/` or `/partial` before `<C-t>` filters the picker to entries where `sase xprompt list` reports
-`is_skill = true`, and inserts the selected skill as `/name`. When `sase xprompt list` includes descriptions, fallback
-picker rows show the xprompt description, local picker filtering matches xprompt and input descriptions, and Telescope
+workflows. Typing `/` or `/partial` before `<C-t>` filters the picker to entries where `sase macro list` reports
+`is_skill = true`, and inserts the selected skill as `/name`. When `sase macro list` includes descriptions, fallback
+picker rows show the macro description, local picker filtering matches macro and input descriptions, and Telescope
 previews include described inputs above the existing content preview.
 
 In the recent-files picker, `<C-l>` (or `<Enter>`) inserts the highlighted path and `<C-d>` removes the highlighted
@@ -76,9 +76,9 @@ drop the cached list so the next `<C-t>` re-fetches from `sase file-history list
 In the fallback file-system picker, candidates come from `sase file list --path <cwd> --token <token>`. Selecting a file
 inserts the full path; selecting a directory drills down and re-opens the picker rooted at the chosen directory.
 
-### XPrompt Picker
+### Macro Picker
 
-Typing `#@` opens the xprompt picker in insert mode. Picker entries show the same reference text that will be inserted,
+Typing `#@` opens the macro picker in insert mode. Picker entries show the same reference text that will be inserted,
 so standalone workflows appear as `#!sync` while inline-capable prompts and workflows appear as `#commit`. Closing the
 picker without a selection restores the original single `#`.
 
@@ -88,20 +88,24 @@ Automatically configures `yamlls` with schema associations for sase YAML files:
 
 - **Config schema** — Applied to project `sase/sase.yml`, global `sase_*.yml`, and
   `src/sase/default_config.yml`
-- **XPrompt workflow schema** — Applied to YAML files under canonical `sase/xprompts/`
+- **Macro workflow schema** — Applied to YAML files under canonical `sase/macros/`, plus the
+  pre-rename `sase/xprompts/` layout, which stays associated until the `legacy_xprompt_syntax`
+  sunset flag is removed
 
-SASE may still read older project config and xprompt layouts during the compatibility window, but `sase-nvim` no longer
-advertises or auto-associates those legacy roots. New project content belongs under `sase/sase.yml` and
-`sase/xprompts/`.
+New project content belongs under `sase/sase.yml` and `sase/macros/`. The schema path
+resolves via `sase path macros-schema`, falling back to `sase path xprompts-schema` on older
+sase installs.
 
 Schema paths are resolved asynchronously via `sase path` to avoid blocking Neovim startup.
 
-### XPrompt LSP
+### Macro LSP
 
-The plugin can start the SASE xprompt language server for git commit, `sase`, `sase_prompt`, and prompt-oriented
+The plugin can start the SASE macro language server for git commit, `sase`, `sase_prompt`, and prompt-oriented
 Markdown buffers. Plain Markdown prose files are skipped by default. Markdown buffers are eligible when they are under
-the canonical `sase/xprompts/` directory, under packaged `default_xprompts/`, or when their filename matches SASE prompt
-editor temporary files such as `sase_ace_prompt_*.md` or `sase_prompt_*.md`. LSP-backed completion is the normal path
+the canonical `sase/macros/` directory, under packaged `default_macros/`, or when their filename matches SASE prompt
+editor temporary files such as `sase_ace_prompt_*.md` or `sase_prompt_*.md`. The pre-rename
+`sase/xprompts/` and packaged `default_xprompts/` layouts stay eligible until the
+`legacy_xprompt_syntax` sunset flag is removed. LSP-backed completion is the normal path
 after `setup()`:
 
 ```lua
@@ -119,13 +123,16 @@ require("sase").setup({
 })
 ```
 
-Command resolution prefers `lsp.cmd`, then `SASE_XPROMPT_LSP_CMD`, then a verified `sase lsp`, then `sase-xprompt-lsp`.
-Set `lsp.allow_all_markdown = true` only if you want every Markdown buffer to attach to the xprompt LSP. The LSP client
+Command resolution prefers `lsp.cmd`, then `SASE_MACRO_LSP_CMD` (then the retired
+`SASE_XPROMPT_LSP_CMD`), then a verified `sase lsp`, then `sase-macro-lsp` (then the retired
+`sase-xprompt-lsp` binary).
+Set `lsp.allow_all_markdown = true` only if you want every Markdown buffer to attach to the macro LSP. The LSP client
 uses `.sase` or `.git` as the project root when available. The `#@` trigger and
-`:SaseXPrompts` picker commands remain picker-based browse surfaces. They keep using `sase xprompt list` until the LSP
+`:SaseMacros` picker commands remain picker-based browse surfaces. They keep using `sase macro list`
+(falling back to `sase xprompt list` on older sase installs) until the LSP
 exposes a browse/catalog request, and file-history deletion keeps using `sase file-history delete`.
 
-When the LSP is attached, normal Neovim go-to-definition works for disk-backed xprompt references. Use your existing LSP
+When the LSP is attached, normal Neovim go-to-definition works for disk-backed macro references. Use your existing LSP
 mapping, such as `gd`, or call `vim.lsp.buf.definition()` on `#foo`, `#!workflow`, namespaced references like
 `#gh__review`, or slash skills like `/sase_plan`. The plugin does not parse source paths in Lua; it relies on the
 server's standard `textDocument/definition` response.
@@ -133,7 +140,7 @@ server's standard `textDocument/definition` response.
 The LSP client advertises snippet-capable completion, using `cmp_nvim_lsp.default_capabilities()` when available and a
 snippet-capable fallback otherwise. Bare SASE snippet trigger prefixes can complete to `CompletionItemKind.Snippet`
 items supplied by the server. Snippets come from the same Python helper-backed registry as the prompt widget in sase's TUI,
-including `ace.snippets` and xprompts marked with `snippet: true` or `snippet: <trigger>`. The Lua plugin does not shell
+including `ace.snippets` and macros marked with `snippet: true` or `snippet: <trigger>`. The Lua plugin does not shell
 out to load that registry.
 
 #### Model shortcuts
@@ -147,7 +154,7 @@ server, so the plugin does not carry a Lua-side model parser.
 
 When the attached SASE server supports `textDocument/onTypeFormatting`, this plugin enables Neovim's native
 `vim.lsp.on_type_formatting` for that client only. Typing `(` immediately after an argument-opening colon removes the
-colon for xprompt/workflow references and supported directives such as `%q:`, `%w:`, and `%m:`. With an editor pairing
+colon for macro/workflow references and supported directives such as `%q:`, `%w:`, and `%m:`. With an editor pairing
 plugin enabled, `%q:` becomes `%q()` with the cursor between the parentheses; without pairing, Neovim inserts the typed
 `(` and the LSP deletes only the colon.
 
@@ -211,7 +218,7 @@ markdown `documentation` preview, with the document title on a second line.
 
 Manual smoke check (snippets):
 
-1. Add a local `sase/sase.yml` with an `ace.snippets` entry and an xprompt with `snippet: true`.
+1. Add a local `sase/sase.yml` with an `ace.snippets` entry and a macro with `snippet: true`.
 2. Open an eligible Markdown or SASE prompt buffer under that project and type the snippet trigger prefix.
 3. Invoke LSP completion, accept the snippet item, and verify Neovim expands the `$1`/`$0` tabstops.
 
@@ -280,23 +287,23 @@ Manual smoke check (`@` artifact-reference completion):
 
 The headless equivalent of this check lives in `tests/lsp_artifact_ref_smoke.lua`.
 
-#### Xprompt argument semantic highlighting
+#### Macro argument semantic highlighting
 
-The xprompt LSP emits keyword-argument structure with standard semantic token types: keys use `parameter`, delimiters
+The macro LSP emits keyword-argument structure with standard semantic token types: keys use `parameter`, delimiters
 and `=` use `operator`, ordinary and quoted values use `string`, numeric values use `number`, and boolean-like values use
 `keyword`. Most of those stay entirely colorscheme-owned. On Neovim's plain defaults, argument keys and punctuation are
 hard to tell apart, so `sase-nvim` adds two opt-out overlay groups:
 
 | Highlight group            | Applied to                         | Default link |
 | -------------------------- | ---------------------------------- | ------------ |
-| `SaseXpromptArgKey`        | SASE xprompt argument `parameter` tokens | `Identifier` |
-| `SaseXpromptArgOperator`   | SASE xprompt argument `operator` tokens  | `Comment`    |
+| `SaseMacroArgKey`        | SASE macro argument `parameter` tokens | `Identifier` |
+| `SaseMacroArgOperator`   | SASE macro argument `operator` tokens  | `Comment`    |
 
 Override either group in your colorscheme or after setup:
 
 ```lua
-vim.api.nvim_set_hl(0, "SaseXpromptArgKey", { link = "Identifier" })
-vim.api.nvim_set_hl(0, "SaseXpromptArgOperator", { link = "Delimiter" })
+vim.api.nvim_set_hl(0, "SaseMacroArgKey", { link = "Identifier" })
+vim.api.nvim_set_hl(0, "SaseMacroArgOperator", { link = "Delimiter" })
 ```
 
 The feature is enabled by default after `setup()` when Neovim exposes `LspTokenUpdate` and
@@ -304,18 +311,21 @@ The feature is enabled by default after `setup()` when Neovim exposes `LspTokenU
 
 ```lua
 require("sase").setup({
-  xprompt_highlight = {
+  macro_highlight = {
     enabled = true, -- default
   },
 })
 ```
 
+The retired `xprompt_highlight` setup key still maps to `macro_highlight` with a
+one-time deprecation warning; the same holds for `xprompt_spacer` → `macro_spacer`.
+
 The headless smoke check for the LSP payload lives in `tests/lsp_argument_semantic_smoke.lua`; the Neovim overlay checks
-live in `tests/xprompt_semantic_highlight.lua`.
+live in `tests/macro_semantic_highlight.lua`.
 
 #### Project tag highlighting
 
-The xprompt LSP emits each project tag (`+sase`) as two `saseProjectTag` semantic tokens — the `+` sigil plus the name —
+The macro LSP emits each project tag (`+sase`) as two `saseProjectTag` semantic tokens — the `+` sigil plus the name —
 with an `accentN` modifier resolved from the Python-owned 18-color accent palette, `unknown` for unresolvable tags, and
 `disabled` for disabled tags and resolved tags without a VCS provider. `sase-nvim` maps those tokens onto highlight
 groups built from the palette the server publishes in its initialize result, so tags render in the same accent as the
@@ -361,7 +371,7 @@ The headless equivalent of this check lives in `tests/lsp_project_tag_highlight_
 
 #### Glossary term underline
 
-The xprompt LSP emits project glossary phrases as standard `type` semantic tokens. Neovim keeps coloring those tokens
+The macro LSP emits project glossary phrases as standard `type` semantic tokens. Neovim keeps coloring those tokens
 through your semantic-token theme, and `sase-nvim` adds the followable-term affordance with one extra highlight group.
 Argument semantic tokens use other standard token types, so the glossary underline is applied only to unmodified SASE
 `type` tokens:
@@ -390,24 +400,25 @@ require("sase").setup({
 Manual smoke check (glossary underline):
 
 1. From a SASE project with a `memory.glossary` entry in `sase/sase.yml`, open an eligible prompt buffer.
-2. Enter a known glossary phrase and wait for the `sase-xprompt-lsp` client to attach.
+2. Enter a known glossary phrase and wait for the `sase-macro-lsp` client to attach.
 3. Verify the phrase is underlined and still uses the colorscheme's semantic-token color.
 4. Override `SaseGlossaryTerm` in the colorscheme and verify the override wins after a `:colorscheme` reload.
 
 The headless equivalent of this check lives in `tests/glossary_highlight.lua`.
 
 For troubleshooting, check Neovim's LSP log (`:lua print(vim.lsp.get_log_path())`) and verify the server command with
-`sase lsp --version` or `sase-xprompt-lsp --version`.
+`sase lsp --version` or `sase-macro-lsp --version` (`sase-xprompt-lsp --version` on installs
+that predate the rename).
 
 ### Alt Brace Syntax (`%{...}`)
 
 The plugin highlights and helps edit the `%{A | B}` alt fan-out shorthand (sase's preferred spelling for `%alt(A, B)`)
 in the same prompt-oriented buffers the LSP attaches to: `gitcommit`, `sase`, `sase_prompt`, and eligible `markdown`
-buffers (under canonical `sase/xprompts/`, packaged `default_xprompts/`, or matching SASE prompt temp files), honoring
+buffers (under canonical `sase/macros/`, packaged `default_macros/`, or matching SASE prompt temp files), honoring
 `allow_all_markdown`. Both features are on by default after `setup()` and
 inherit the LSP filetype and `allow_all_markdown` settings.
 
-**Highlighting** comes from the xprompt LSP: the server scans each prompt for alternations and this plugin overlays its
+**Highlighting** comes from the macro LSP: the server scans each prompt for alternations and this plugin overlays its
 own highlight groups on the server's semantic tokens, so delimiters read differently from branch separators. There is
 no Lua copy of the alternation grammar — `%{` opens anywhere outside literal zones, including mid-word
 (`foo%{bar | baz}qux`) — while the legacy `%(`/`%alt(` forms still need a directive-valid position. Highlighting
@@ -436,7 +447,7 @@ Override the look by linking or defining those groups in your colorscheme (e.g.
   `%{foo, bar, and baz | }`. When alternations nest, the innermost enclosing span wins; an unclosed span never reaches
   past its own line.
 
-The plugin does not perform paired deletion for an empty `%{}`. The `#@` xprompt picker trigger and ordinary `{` / `|`
+The plugin does not perform paired deletion for an empty `%{}`. The `#@` macro picker trigger and ordinary `{` / `|`
 typing outside a `%{...}` context are unaffected.
 
 Configure or disable either feature through `setup()`:
@@ -465,7 +476,7 @@ covers only the brace form, and highlighting follows the server grammar for both
 - Neovim >= 0.8
 - `sase` on `PATH` for picker fallback, file-history deletion, schema discovery, and the default LSP wrapper — install
   it with `uv tool install sase` (see the [SASE install guide](https://github.com/sase-org/sase/blob/master/INSTALL.md))
-- `sase lsp` support or a standalone `sase-xprompt-lsp` binary for LSP-backed completion
+- `sase lsp` support or a standalone `sase-macro-lsp` binary for LSP-backed completion
 - Optional: Neovim with `vim.lsp.on_type_formatting.enable()` plus an editor pairing plugin for the `%q:` → `%q()`
   typing shortcut. Without pairing, the LSP still deletes only the colon.
 - Optional: `nvim-telescope/telescope.nvim` for the richer picker UI. Without Telescope, pickers fall back to
@@ -504,8 +515,8 @@ Plug 'sase-org/sase-nvim'
 Most plugin files load automatically when Neovim starts:
 
 - `.sase` filetype detection and syntax highlighting
-- `#@` insert-mode xprompt picker trigger
-- `:SaseXPrompts`, `:SaseXPromptsRefresh`, and `:SaseFileHistoryRefresh`
+- `#@` insert-mode macro picker trigger
+- `:SaseMacros`, `:SaseMacrosRefresh`, and `:SaseFileHistoryRefresh`
 - YAML schema registration for `yamlls`
 
 The `<C-t>` completion dispatcher is opt-in:
@@ -549,9 +560,38 @@ use `"picker"`.
 
 | Command                   | Description                                      |
 | ------------------------- | ------------------------------------------------ |
-| `:SaseXPrompts`           | Open the xprompt picker manually                 |
-| `:SaseXPromptsRefresh`    | Refresh the cached `sase xprompt list` results   |
+| `:SaseMacros`           | Open the macro picker manually                 |
+| `:SaseMacrosRefresh`    | Refresh the cached `sase macro list` results   |
 | `:SaseFileHistoryRefresh` | Refresh the cached `sase file-history list` data |
+
+`:SaseXPrompts` and `:SaseXPromptsRefresh` remain as deprecated aliases that warn once
+per name; they are removed when the `legacy_xprompt_syntax` sunset flag is removed (see
+[Migrating from xprompts](#migrating-from-xprompts)).
+
+## Migrating from xprompts
+
+SASE renamed reusable prompt definitions from **xprompts** to **macros**. Update your
+config to the new spellings; the old ones keep working with a one-time deprecation
+warning until the `legacy_xprompt_syntax` sunset flag is removed:
+
+| Old                                | New                                  |
+| ---------------------------------- | ------------------------------------ |
+| `require("sase.xprompt")`          | `require("sase.macro")`              |
+| `require("sase.complete.xprompt")` | `require("sase.complete.macro")`     |
+| `require("sase.xprompt_semantic_highlight")` | `require("sase.macro_semantic_highlight")` |
+| `require("sase.xprompt_spacer")`   | `require("sase.macro_spacer")`       |
+| `xprompt_highlight = {...}` setup key | `macro_highlight = {...}`         |
+| `xprompt_spacer = {...}` setup key | `macro_spacer = {...}`               |
+| `:SaseXPrompts` / `:SaseXPromptsRefresh` | `:SaseMacros` / `:SaseMacrosRefresh` |
+| Telescope `sase.xprompts` picker   | Telescope `sase.macros` picker       |
+| `SaseXpromptArgKey` / `SaseXpromptArgOperator` highlight groups | `SaseMacroArgKey` / `SaseMacroArgOperator` |
+| `SASE_XPROMPT_LSP_CMD` env var     | `SASE_MACRO_LSP_CMD`                 |
+| `sase-xprompt-lsp` binary          | `sase-macro-lsp` (via `sase lsp`)    |
+| `sase/xprompts/` definition dirs   | `sase/macros/`                       |
+
+Supplying both the old and new spelling of a setup key is an error. An override of
+either the new or the legacy highlight-group name takes effect; when both are
+customized, the new name wins.
 
 ## Project Structure
 
@@ -561,21 +601,23 @@ use `"picker"`.
 ├── lua/
 │   ├── sase/
 │   │   ├── init.lua               # require("sase").setup entry point
-│   │   ├── lsp.lua                # xprompt LSP client setup
+│   │   ├── lsp.lua                # macro LSP client setup
 │   │   ├── glossary_highlight.lua # glossary semantic-token underline
-│   │   ├── xprompt.lua            # #@ xprompt picker core
+│   │   ├── macro.lua              # #@ macro picker core
+│   │   ├── macro_semantic_highlight.lua # macro argument token overlay
+│   │   ├── macro_spacer.lua       # optional-only macro `:` spacer rewrite
 │   │   └── complete/
 │   │       ├── _picker.lua      # shared insertion and insert-mode restore helpers
 │   │       ├── _token.lua       # picker fallback token classification
 │   │       ├── file.lua         # fallback file-system picker
 │   │       ├── file_history.lua # fallback recent-file picker
 │   │       ├── project_tag.lua  # fallback project-tag picker (`sase project list`)
-│   │       └── xprompt.lua      # fallback xprompt picker wrapper
+│   │       └── macro.lua      # fallback macro picker wrapper
 │   └── telescope/
-│       └── _extensions/sase.lua # Telescope pickers for xprompts, files, and recent files
+│       └── _extensions/sase.lua # Telescope pickers for macros, files, and recent files
 ├── plugin/
 │   ├── sase_complete.lua        # completion cache command registration
-│   ├── sase_xprompt.lua         # #@ trigger and xprompt commands
+│   ├── sase_macro.lua         # #@ trigger and macro commands
 │   └── sase_yamlls.lua          # YAML language server schema configuration
 └── syntax/
     └── sase_project_spec.vim    # Syntax highlighting rules

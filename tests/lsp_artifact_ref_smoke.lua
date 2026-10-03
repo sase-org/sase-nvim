@@ -1,5 +1,5 @@
 -- Headless smoke coverage for fuzzy artifact-reference completion served by the
--- xprompt LSP.
+-- macro LSP.
 --
 -- The server ranks `@kind:query` rows with its own fuzzy matcher, so the rows it
 -- returns have to survive the *client's* filter to be usable at all. Neovim's
@@ -16,29 +16,50 @@ local function fail(message)
 	error(message, 0)
 end
 
+local function macro_lsp_crate(core_manifest)
+	local crates_dir = vim.fn.fnamemodify(core_manifest, ":h") .. "/crates"
+	if vim.fn.filereadable(crates_dir .. "/sase_macro_lsp/Cargo.toml") == 1 then
+		return "sase_macro_lsp"
+	end
+	-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+	return "sase_xprompt_lsp"
+end
+
 local function resolve_cmd()
-	if vim.env.SASE_XPROMPT_LSP_CMD and vim.env.SASE_XPROMPT_LSP_CMD ~= "" then
-		return vim.fn.split(vim.env.SASE_XPROMPT_LSP_CMD)
+	local macro_cmd = vim.env.SASE_MACRO_LSP_CMD
+	if macro_cmd and macro_cmd ~= "" then
+		return vim.fn.split(macro_cmd)
+	end
+
+	-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+	local legacy_cmd = vim.env.SASE_XPROMPT_LSP_CMD
+	if legacy_cmd and legacy_cmd ~= "" then
+		return vim.fn.split(legacy_cmd)
 	end
 
 	local core_manifest = vim.fn.fnamemodify(repo_dir .. "/../sase-core/Cargo.toml", ":p")
 	if vim.fn.filereadable(core_manifest) == 1 and vim.fn.executable("cargo") == 1 then
-		return { "cargo", "run", "--quiet", "--manifest-path", core_manifest, "-p", "sase_xprompt_lsp", "--" }
+		return { "cargo", "run", "--quiet", "--manifest-path", core_manifest, "-p", macro_lsp_crate(core_manifest), "--" }
 	end
 
 	if vim.fn.executable("sase") == 1 and vim.fn.system({ "sase", "lsp", "--version" }) and vim.v.shell_error == 0 then
 		return { "sase", "lsp" }
 	end
 
+	if vim.fn.executable("sase-macro-lsp") == 1 then
+		return { "sase-macro-lsp" }
+	end
+
+	-- legacy xprompt spelling; remove with legacy_xprompt_syntax
 	if vim.fn.executable("sase-xprompt-lsp") == 1 then
 		return { "sase-xprompt-lsp" }
 	end
 
-	fail("no xprompt LSP command available")
+	fail("no macro LSP command available")
 end
 
 local function get_clients(bufnr)
-	local filter = { name = "sase-xprompt-lsp", bufnr = bufnr }
+	local filter = { name = "sase-macro-lsp", bufnr = bufnr }
 	if vim.lsp.get_clients then
 		return vim.lsp.get_clients(filter)
 	end
@@ -54,7 +75,7 @@ local function wait_for_client(client_id)
 			and client.server_capabilities.completionProvider ~= nil
 	end, 100)
 	if not started then
-		fail("xprompt LSP client did not attach with completion support")
+		fail("macro LSP client did not attach with completion support")
 	end
 end
 
@@ -142,7 +163,7 @@ vim.fn.writefile({
 }, bundle .. "/sase_sites_hub_and_pages.md")
 
 -- The launcher normally materializes this catalog; the raw server reads it from
--- SASE_XPROMPT_ARTIFACT_REF_CATALOG, which keeps the test independent of a
+-- SASE_MACRO_ARTIFACT_REF_CATALOG, which keeps the test independent of a
 -- configured SASE project.
 local catalog_path = root .. "/artifact_ref_catalog.json"
 local function document_project(name)
@@ -182,7 +203,7 @@ vim.fn.writefile({
 		projects = { document_project("sase") },
 	}),
 }, catalog_path)
-vim.env.SASE_XPROMPT_ARTIFACT_REF_CATALOG = catalog_path
+vim.env.SASE_MACRO_ARTIFACT_REF_CATALOG = catalog_path
 
 local prompt_path = root .. "/sase_prompt_artifact_ref_smoke.md"
 vim.fn.writefile({ "" }, prompt_path)
@@ -199,7 +220,7 @@ vim.bo.filetype = "markdown"
 
 local client_id = require("sase.lsp").start(0)
 if not client_id then
-	fail("xprompt LSP did not start")
+	fail("macro LSP did not start")
 end
 wait_for_client(client_id)
 assert_at_reference_trigger(client_id)

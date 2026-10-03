@@ -119,9 +119,15 @@ same(alt.supports_buffer(make_buffer("gitcommit", tmp .. "_COMMIT_EDITMSG")), tr
 same(alt.supports_buffer(make_buffer("lua", tmp .. "_c.lua")), false, "unrelated filetype not eligible")
 same(alt.supports_buffer(make_buffer("markdown", tmp .. "_notes.md")), false, "plain markdown not eligible")
 same(
+	alt.supports_buffer(make_buffer("markdown", "/work/sase/macros/" .. vim.fn.fnamemodify(tmp, ":t") .. ".md")),
+	true,
+	"markdown under canonical sase/macros/ eligible"
+)
+same(
+	-- legacy xprompt spelling; remove with legacy_xprompt_syntax
 	alt.supports_buffer(make_buffer("markdown", "/work/sase/xprompts/" .. vim.fn.fnamemodify(tmp, ":t") .. ".md")),
 	true,
-	"markdown under canonical sase/xprompts/ eligible"
+	"markdown under legacy sase/xprompts/ stays eligible"
 )
 
 -- --- End-to-end editing in real buffers ------------------------------------ #
@@ -213,7 +219,7 @@ do
 end
 
 -- The `#@` picker trigger char is left untouched by alt_edit (it only acts on
--- `{`/`|`); the trigger itself lives in plugin/sase_xprompt.lua.
+-- `{`/`|`); the trigger itself lives in plugin/sase_macro.lua.
 do
 	local buf = make_buffer("sase", tmp .. "_e8.sase")
 	set_line(buf, "", 1, 0)

@@ -1,6 +1,6 @@
--- Optional-only xprompt spacer `:` cleanup.
+-- Optional-only macro spacer `:` cleanup.
 --
--- A native LSP completion of an *optional-only* xprompt (one whose inputs are
+-- A native LSP completion of an *optional-only* macro (one whose inputs are
 -- all optional) inserts `#name ` with a deliberate trailing spacer -- mirroring
 -- the ACE prompt input and the sase-core completion skeleton. This module lets
 -- the next typed `:` replace that spacer in place so the common `#name:`
@@ -8,7 +8,7 @@
 --
 -- The check is intentionally conservative and catalog-backed: it only fires
 -- when the cursor sits immediately after `#name ` / `#!name ` and `name` is a
--- cached xprompt known to be optional-only. A cold or unknown catalog does
+-- cached macro known to be optional-only. A cold or unknown catalog does
 -- nothing rather than guessing, and ordinary spaces after no-input, unknown, or
 -- slash-skill references are left untouched. The picker path inserts a bare
 -- `#name` (no spacer), so it is not handled here.
@@ -19,7 +19,7 @@
 local M = {}
 
 local DEFAULT_FILETYPES = { "markdown", "gitcommit", "sase", "sase_prompt" }
-local GROUP = "SaseXPromptSpacer"
+local GROUP = "SaseMacroSpacer"
 
 local config = {
 	enabled = true,
@@ -44,7 +44,7 @@ end
 --- Return the `#name` / `#!name` reference ending immediately before the byte at
 --- 0-indexed `space_index`, with its 0-indexed start, or nil. The reference must
 --- be bounded on its left by start-of-line or a non-word character (matching the
---- xprompt trigger contexts) so a mid-word `#` fragment is ignored.
+--- macro trigger contexts) so a mid-word `#` fragment is ignored.
 --- @param line string
 --- @param space_index integer  0-indexed position of the candidate spacer
 --- @return string|nil reference, integer|nil ref_start
@@ -108,7 +108,7 @@ end
 -- this runs on the next tick; deleting it leaves `#name:`. The colon now sits
 -- at `plan.start`, so the cursor is placed just after it -- via `startinsert!`
 -- at end-of-line, where normal-mode cursor clamping would otherwise forbid the
--- final column (mirrors `xprompt.lua`'s `restore_insert_mode`).
+-- final column (mirrors `macro.lua`'s `restore_insert_mode`).
 local function apply_plan(bufnr, row, plan)
 	if not vim.api.nvim_buf_is_valid(bufnr) then
 		return
@@ -137,7 +137,7 @@ local function on_insert_char(bufnr)
 	local cursor = vim.api.nvim_win_get_cursor(0)
 	local row = cursor[1] - 1
 	local offset = cursor[2]
-	local plan = M.plan_colon(line, offset, require("sase.xprompt").reference_is_optional_only)
+	local plan = M.plan_colon(line, offset, require("sase.macro").reference_is_optional_only)
 	if not plan then
 		return
 	end

@@ -1,13 +1,13 @@
 [
   {
     "name": "review",
-    "type": "xprompt",
-    "kind": "xprompt",
+    "type": "macro",
+    "kind": "macro",
     "prefix": "#",
     "insertion": "#review",
     "is_skill": false,
     "description": "Review a diff and identify follow-up work.",
-    "source": "/tmp/sase/xprompts/review.md",
+    "source": "/tmp/sase/macros/review.md",
     "inputs": [
       {
         "name": "diff",

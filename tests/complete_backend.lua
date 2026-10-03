@@ -14,7 +14,7 @@ package.loaded["sase.complete._token"] = {
 		return { text = "#plan" }
 	end,
 	classify = function()
-		return "xprompt"
+		return "macro"
 	end,
 }
 package.loaded["sase.lsp"] = {
@@ -23,7 +23,7 @@ package.loaded["sase.lsp"] = {
 		return false
 	end,
 }
-package.loaded["sase.complete.xprompt"] = {
+package.loaded["sase.complete.macro"] = {
 	pick = function(opts)
 		picker_calls = picker_calls + 1
 		same(opts.token, { text = "#plan" }, "picker receives token context")

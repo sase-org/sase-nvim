@@ -1,4 +1,4 @@
--- Telescope extension for sase xprompt picker with preview.
+-- Telescope extension for sase macro picker with preview.
 
 local has_telescope, telescope = pcall(require, "telescope")
 if not has_telescope then
@@ -13,18 +13,18 @@ local action_state = require("telescope.actions.state")
 local previewers = require("telescope.previewers")
 local entry_display = require("telescope.pickers.entry_display")
 
-local xprompt = require("sase.xprompt")
+local macro = require("sase.macro")
 local file_history = require("sase.complete.file_history")
 local file_complete = require("sase.complete.file")
 local complete_picker = require("sase.complete._picker")
 
---- Create a Telescope previewer that shows xprompt content.
+--- Create a Telescope previewer that shows macro content.
 local function make_previewer()
 	return previewers.new_buffer_previewer({
-		title = "XPrompt Preview",
+		title = "Macro Preview",
 		define_preview = function(self, entry)
 			local item = entry.value
-			local lines = xprompt._preview_lines(item)
+			local lines = macro._preview_lines(item)
 			vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, lines)
 			-- Use markdown highlighting for preview.
 			vim.bo[self.state.bufnr].filetype = "markdown"
@@ -34,12 +34,12 @@ end
 
 --- Main picker function.
 --- @param opts? table
-local function xprompts_picker(opts)
+local function macros_picker(opts)
 	opts = opts or {}
 
 	local function show(items)
 		if #items == 0 then
-			vim.notify("No xprompts found", vim.log.levels.WARN)
+			vim.notify("No macros found", vim.log.levels.WARN)
 			if opts.on_cancel then
 				opts.on_cancel()
 			end
@@ -58,7 +58,7 @@ local function xprompts_picker(opts)
 			local item = entry.value
 			local icon = item.type == "workflow" and "⚙" or " "
 			-- Build name with input hints.
-			local name = xprompt._item_insertion(item)
+			local name = macro._item_insertion(item)
 			local input_parts = {}
 			for _, inp in ipairs(item.inputs or {}) do
 				input_parts[#input_parts + 1] = inp.required and inp.name or (inp.name .. "?")
@@ -66,26 +66,26 @@ local function xprompts_picker(opts)
 			if #input_parts > 0 then
 				name = name .. "(" .. table.concat(input_parts, ", ") .. ")"
 			end
-			local description = xprompt._single_line_text(item.description)
+			local description = macro._single_line_text(item.description)
 			if description then
 				name = name .. " - " .. description
 			end
 			return displayer({
-				{ icon, xprompt._item_kind_label(item) },
+				{ icon, macro._item_kind_label(item) },
 				{ name, "Function" },
 			})
 		end
 
 		pickers
 			.new(opts, {
-				prompt_title = "XPrompts",
+				prompt_title = "Macros",
 				finder = finders.new_table({
 					results = items,
 					entry_maker = function(item)
 						return {
 							value = item,
 							display = make_display,
-							ordinal = xprompt._item_search_text(item),
+							ordinal = macro._item_search_text(item),
 						}
 					end,
 				}),
@@ -99,8 +99,8 @@ local function xprompts_picker(opts)
 						actions.close(prompt_bufnr)
 						if selection then
 							local end_pos =
-								xprompt._insert_at_cursor(selection.value, opts.insert_pos, opts.replace_range)
-							xprompt._restore_insert_mode(opts.origin_win, end_pos)
+								macro._insert_at_cursor(selection.value, opts.insert_pos, opts.replace_range)
+							macro._restore_insert_mode(opts.origin_win, end_pos)
 						elseif opts.on_cancel then
 							opts.on_cancel()
 						end
@@ -122,7 +122,7 @@ local function xprompts_picker(opts)
 	if opts.items then
 		show(opts.items)
 	else
-		xprompt._fetch_xprompts(show)
+		macro._fetch_macros(show)
 	end
 end
 
@@ -327,7 +327,9 @@ end
 
 return telescope.register_extension({
 	exports = {
-		xprompts = xprompts_picker,
+		macros = macros_picker,
+		-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+		xprompts = macros_picker,
 		file_history = file_history_picker,
 		file = file_picker,
 	},

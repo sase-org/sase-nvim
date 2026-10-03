@@ -1,5 +1,5 @@
 -- Headless smoke coverage for native on-type formatting served by the
--- xprompt LSP through the plugin's real Neovim client.
+-- macro LSP through the plugin's real Neovim client.
 
 local repo_dir = vim.fn.getcwd()
 package.path = repo_dir .. "/lua/?.lua;" .. repo_dir .. "/lua/?/init.lua;" .. package.path
@@ -9,14 +9,20 @@ local function fail(message)
 end
 
 local function resolve_cmd()
-	if vim.env.SASE_XPROMPT_LSP_CMD and vim.env.SASE_XPROMPT_LSP_CMD ~= "" then
-		return vim.fn.split(vim.env.SASE_XPROMPT_LSP_CMD)
+	local macro_cmd = vim.env.SASE_MACRO_LSP_CMD
+	if macro_cmd and macro_cmd ~= "" then
+		return vim.fn.split(macro_cmd)
 	end
-	fail("SASE_XPROMPT_LSP_CMD must point at the rebuilt xprompt LSP")
+	-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+	local legacy_cmd = vim.env.SASE_XPROMPT_LSP_CMD
+	if legacy_cmd and legacy_cmd ~= "" then
+		return vim.fn.split(legacy_cmd)
+	end
+	fail("SASE_MACRO_LSP_CMD must point at the rebuilt macro LSP")
 end
 
 local function get_clients(bufnr)
-	local filter = { name = "sase-xprompt-lsp", bufnr = bufnr }
+	local filter = { name = "sase-macro-lsp", bufnr = bufnr }
 	if vim.lsp.get_clients then
 		return vim.lsp.get_clients(filter)
 	end
@@ -32,7 +38,7 @@ local function wait_for_client(client_id)
 			and client.server_capabilities.documentOnTypeFormattingProvider ~= nil
 	end, 100)
 	if not started then
-		fail("xprompt LSP client did not attach with on-type formatting support")
+		fail("macro LSP client did not attach with on-type formatting support")
 	end
 end
 
@@ -105,7 +111,7 @@ vim.bo.filetype = "markdown"
 
 local client_id = require("sase.lsp").start(0)
 if not client_id then
-	fail("xprompt LSP did not start")
+	fail("macro LSP did not start")
 end
 wait_for_client(client_id)
 

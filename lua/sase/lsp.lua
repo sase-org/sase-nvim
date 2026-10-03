@@ -1,10 +1,10 @@
--- Neovim LSP client glue for the sase xprompt language server.
+-- Neovim LSP client glue for the sase macro language server.
 
 local M = {}
 
 local DEFAULT_FILETYPES = { "markdown", "gitcommit", "sase", "sase_prompt" }
-local CLIENT_NAME = "sase-xprompt-lsp"
-local GROUP = "SaseXPromptLsp"
+local CLIENT_NAME = "sase-macro-lsp"
+local GROUP = "SaseMacroLsp"
 
 local config = {
 	enabled = true,
@@ -73,15 +73,26 @@ function M._resolve_cmd(opts, env, executable_fn, sase_lsp_available_fn)
 		return explicit
 	end
 
-	local override = normalize_cmd(env.SASE_XPROMPT_LSP_CMD)
+	local override = normalize_cmd(env.SASE_MACRO_LSP_CMD)
 	if override then
 		return override
+	end
+
+	-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+	local legacy_override = normalize_cmd(env.SASE_XPROMPT_LSP_CMD)
+	if legacy_override then
+		return legacy_override
 	end
 
 	if executable_fn("sase") and sase_lsp_available_fn() then
 		return { "sase", "lsp" }
 	end
 
+	if executable_fn("sase-macro-lsp") then
+		return { "sase-macro-lsp" }
+	end
+
+	-- legacy xprompt spelling; remove with legacy_xprompt_syntax
 	if executable_fn("sase-xprompt-lsp") then
 		return { "sase-xprompt-lsp" }
 	end
@@ -176,7 +187,11 @@ local function is_supported_markdown_path(path)
 	if type(path) ~= "string" or path == "" then
 		return false
 	end
-	return has_path_sequence(path, { "sase", "xprompts" })
+	return has_path_sequence(path, { "sase", "macros" })
+		-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+		or has_path_sequence(path, { "sase", "xprompts" })
+		or has_path_component(path, "default_macros")
+		-- legacy xprompt spelling; remove with legacy_xprompt_syntax
 		or has_path_component(path, "default_xprompts")
 		or has_prompt_temp_name(path)
 end

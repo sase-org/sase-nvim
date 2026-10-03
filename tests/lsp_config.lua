@@ -33,18 +33,54 @@ same(
 same(
 	lsp._resolve_cmd(
 		{},
+		{ SASE_MACRO_LSP_CMD = "cargo run -p sase_macro_lsp --" },
+		executable({}),
+		available(false)
+	),
+	{ "cargo", "run", "-p", "sase_macro_lsp", "--" },
+	"env cmd"
+)
+same(
+	lsp._resolve_cmd(
+		{},
+		-- legacy xprompt spelling; remove with legacy_xprompt_syntax
 		{ SASE_XPROMPT_LSP_CMD = "cargo run -p sase_xprompt_lsp --" },
 		executable({}),
 		available(false)
 	),
 	{ "cargo", "run", "-p", "sase_xprompt_lsp", "--" },
-	"env cmd"
+	"legacy env cmd still resolves"
+)
+same(
+	lsp._resolve_cmd(
+		{},
+		{
+			SASE_MACRO_LSP_CMD = "new-lsp --stdio",
+			-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+			SASE_XPROMPT_LSP_CMD = "old-lsp --stdio",
+		},
+		executable({}),
+		available(false)
+	),
+	{ "new-lsp", "--stdio" },
+	"new env cmd wins over the legacy one"
 )
 same(lsp._resolve_cmd({}, {}, executable({ sase = true }), available(true)), { "sase", "lsp" }, "sase wrapper cmd")
 same(
-	lsp._resolve_cmd({}, {}, executable({ sase = true, ["sase-xprompt-lsp"] = true }), available(false)),
-	{ "sase-xprompt-lsp" },
+	lsp._resolve_cmd({}, {}, executable({ sase = true, ["sase-macro-lsp"] = true }), available(false)),
+	{ "sase-macro-lsp" },
 	"old sase falls through to standalone binary"
+)
+same(
+	lsp._resolve_cmd(
+		{},
+		{},
+		-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+		executable({ sase = true, ["sase-xprompt-lsp"] = true }),
+		available(false)
+	),
+	{ "sase-xprompt-lsp" },
+	"legacy standalone binary is the last fallback"
 )
 same(
 	lsp._resolve_cmd({}, {}, executable({ sase = true }), available(false)),
@@ -52,8 +88,8 @@ same(
 	"old sase without standalone binary is missing cmd"
 )
 same(
-	lsp._resolve_cmd({}, {}, executable({ ["sase-xprompt-lsp"] = true }), available(false)),
-	{ "sase-xprompt-lsp" },
+	lsp._resolve_cmd({}, {}, executable({ ["sase-macro-lsp"] = true }), available(false)),
+	{ "sase-macro-lsp" },
 	"standalone binary cmd"
 )
 same(lsp._resolve_cmd({}, {}, executable({}), available(false)), nil, "missing cmd")
@@ -132,24 +168,36 @@ same(lsp._config().allow_all_markdown, false, "all-markdown attachment is off by
 same(lsp._config().native_completion, "auto", "native completion defaults to auto")
 
 same(
+	lsp._is_supported_markdown_path("/tmp/project/sase/macros/foo.md"),
+	true,
+	"canonical macros markdown is supported"
+)
+same(
+	lsp._is_supported_markdown_path("/tmp/project/macros/foo.md"),
+	false,
+	"visible macros markdown is not auto-associated"
+)
+same(
+	lsp._is_supported_markdown_path("/tmp/project/.macros/foo.md"),
+	false,
+	".macros markdown is not auto-associated"
+)
+same(
+	-- legacy xprompt spelling; remove with legacy_xprompt_syntax
 	lsp._is_supported_markdown_path("/tmp/project/sase/xprompts/foo.md"),
 	true,
-	"canonical xprompts markdown is supported"
+	"legacy canonical path stays supported"
 )
 same(
-	lsp._is_supported_markdown_path("/tmp/project/xprompts/foo.md"),
-	false,
-	"legacy visible xprompts markdown is not auto-associated"
-)
-same(
-	lsp._is_supported_markdown_path("/tmp/project/.xprompts/foo.md"),
-	false,
-	".xprompts markdown is not auto-associated"
-)
-same(
+	-- legacy xprompt spelling; remove with legacy_xprompt_syntax
 	lsp._is_supported_markdown_path("/tmp/project/src/sase/default_xprompts/research_swarm.md"),
 	true,
-	"default_xprompts markdown is supported"
+	"legacy packaged path stays supported"
+)
+same(
+	lsp._is_supported_markdown_path("/tmp/project/src/sase/default_macros/research_swarm.md"),
+	true,
+	"default_macros markdown is supported"
 )
 same(lsp._is_supported_markdown_path("/tmp/sase_ace_prompt_abc.md"), true, "ace prompt temp markdown is supported")
 same(lsp._is_supported_markdown_path("/tmp/sase_prompt_abc.md"), true, "cli prompt temp markdown is supported")
@@ -182,7 +230,7 @@ same(
 	"sase_prompt filetype support does not require a markdown path"
 )
 
-vim.api.nvim_buf_set_name(0, vim.fn.getcwd() .. "/sase/xprompts/current.md")
+vim.api.nvim_buf_set_name(0, vim.fn.getcwd() .. "/sase/macros/current.md")
 vim.bo.filetype = "markdown"
 local original_start = vim.lsp.start
 local captured_config = nil
@@ -203,7 +251,7 @@ vim.lsp.start = original_start
 if type(vim.lsp.buf.definition) ~= "function" then
 	error("standard vim.lsp.buf.definition is unavailable")
 end
-same(captured_config.name, "sase-xprompt-lsp", "lsp client name")
+same(captured_config.name, "sase-macro-lsp", "lsp client name")
 same(captured_config.cmd, { "fake-lsp" }, "lsp start cmd")
 same(
 	captured_config.capabilities.textDocument.definition,
@@ -236,7 +284,7 @@ vim.lsp.on_type_formatting = {
 
 captured_config.on_attach({
 	id = 7,
-	name = "sase-xprompt-lsp",
+	name = "sase-macro-lsp",
 	supports_method = function(_, method)
 		return method == "textDocument/completion" or method == "textDocument/onTypeFormatting"
 	end,
@@ -260,7 +308,7 @@ require("sase").setup({
 vim.lsp.start = original_start
 captured_config.on_attach({
 	id = 8,
-	name = "sase-xprompt-lsp",
+	name = "sase-macro-lsp",
 	supports_method = function(_, method)
 		return method == "textDocument/completion" or method == "textDocument/onTypeFormatting"
 	end,
@@ -280,7 +328,7 @@ same(#on_type_calls, 0, "on-type formatting ignores other clients")
 
 lsp._enable_on_type_formatting({
 	id = 10,
-	name = "sase-xprompt-lsp",
+	name = "sase-macro-lsp",
 	supports_method = function(_, method)
 		return method ~= "textDocument/onTypeFormatting"
 	end,
@@ -291,7 +339,7 @@ vim.lsp.on_type_formatting = nil
 local ok, err = pcall(function()
 	lsp._enable_on_type_formatting({
 		id = 11,
-		name = "sase-xprompt-lsp",
+		name = "sase-macro-lsp",
 		supports_method = function()
 			return true
 		end,

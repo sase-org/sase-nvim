@@ -64,7 +64,7 @@ end
 -- Return true when the 0-indexed byte `index` falls inside a backtick span
 -- on `line` (inline code). The planners only see one line, so this is the
 -- line-visible part of the literal zones: fenced blocks and
--- `%xprompts_enabled:false` regions span lines and are owned by the server.
+-- `%macros_enabled:false` regions span lines and are owned by the server.
 local function in_backtick_span(line, index)
 	local in_backtick = false
 	for i = 0, #line - 1 do

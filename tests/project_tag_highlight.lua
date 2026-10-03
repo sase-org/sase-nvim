@@ -125,7 +125,7 @@ local original_highlight_token = vim.lsp.semantic_tokens.highlight_token
 local original_get_client_by_id = vim.lsp.get_client_by_id
 local highlighted = {}
 local clients = {
-	[7] = { name = "sase-xprompt-lsp" },
+	[7] = { name = "sase-macro-lsp" },
 	[8] = { name = "foreign-lsp" },
 }
 
@@ -222,11 +222,11 @@ same(#highlighted, 0, "disabled highlighting is ignored")
 require("sase").setup({
 	lsp = { enabled = false },
 	glossary_highlight = { enabled = false },
-	xprompt_highlight = { enabled = false },
+	macro_highlight = { enabled = false },
 	project_tag_highlight = { enabled = false },
 	alt_highlight = { enabled = false },
 	alt_editing = { enabled = false },
-	xprompt_spacer = { enabled = false },
+	macro_spacer = { enabled = false },
 })
 same(highlight._config().enabled, false, "top-level setup forwards project_tag_highlight opts")
 

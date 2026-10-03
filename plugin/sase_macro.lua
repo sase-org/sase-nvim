@@ -1,27 +1,52 @@
--- XPrompt picker triggered by #@ in insert mode.
--- Also provides the :SaseXPrompts command for manual invocation.
+-- Macro picker triggered by #@ in insert mode.
+-- Also provides the :SaseMacros command for manual invocation.
 
-if vim.g.loaded_sase_xprompt then
+if vim.g.loaded_sase_macro then
   return
 end
-vim.g.loaded_sase_xprompt = true
+vim.g.loaded_sase_macro = true
 
--- :SaseXPrompts — open the picker from any mode.
+-- :SaseMacros — open the picker from any mode.
+vim.api.nvim_create_user_command("SaseMacros", function()
+  require("sase.macro").pick()
+end, { desc = "Open sase macro picker" })
+
+-- :SaseMacrosRefresh — refresh the cached macro list.
+vim.api.nvim_create_user_command("SaseMacrosRefresh", function()
+  require("sase.macro").refresh()
+  vim.notify("macro cache refreshed", vim.log.levels.INFO)
+end, { desc = "Refresh sase macro cache" })
+
+-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+local deprecated_command_warned = {}
+local function deprecated_command(old_name, new_name)
+  if deprecated_command_warned[old_name] then
+    return
+  end
+  deprecated_command_warned[old_name] = true
+  vim.notify(
+    string.format("sase-nvim: `:%s` is deprecated; use `:%s`", old_name, new_name),
+    vim.log.levels.WARN
+  )
+end
+
+-- legacy xprompt spelling; remove with legacy_xprompt_syntax
 vim.api.nvim_create_user_command("SaseXPrompts", function()
-  require("sase.xprompt").pick()
-end, { desc = "Open sase xprompt picker" })
+  deprecated_command("SaseXPrompts", "SaseMacros")
+  require("sase.macro").pick()
+end, { desc = "Deprecated alias of :SaseMacros" })
 
--- :SaseXPromptsRefresh — refresh the cached xprompt list.
+-- legacy xprompt spelling; remove with legacy_xprompt_syntax
 vim.api.nvim_create_user_command("SaseXPromptsRefresh", function()
-  require("sase.xprompt").refresh()
-  vim.notify("xprompt cache refreshed", vim.log.levels.INFO)
-end, { desc = "Refresh sase xprompt cache" })
+  deprecated_command("SaseXPromptsRefresh", "SaseMacrosRefresh")
+  require("sase.macro").refresh()
+end, { desc = "Deprecated alias of :SaseMacrosRefresh" })
 
 -- Insert-mode #@ trigger.
 -- When the user types @ and the character before cursor is #,
 -- remove the # and open the picker. On cancel, restore a single #.
 vim.api.nvim_create_autocmd("InsertCharPre", {
-  group = vim.api.nvim_create_augroup("SaseXPromptTrigger", { clear = true }),
+  group = vim.api.nvim_create_augroup("SaseMacroTrigger", { clear = true }),
   callback = function()
     if vim.v.char ~= "@" then
       return
@@ -57,7 +82,7 @@ vim.api.nvim_create_autocmd("InsertCharPre", {
         vim.cmd("stopinsert")
       end
 
-      require("sase.xprompt").pick({
+      require("sase.macro").pick({
         was_insert = was_insert,
         origin_win = origin_win,
         insert_pos = { row = row, col = col - 1 },
@@ -81,12 +106,12 @@ vim.api.nvim_create_autocmd("InsertCharPre", {
 
 -- Pre-warm the cache on VimEnter so the first #@ is instant.
 vim.api.nvim_create_autocmd("VimEnter", {
-  group = vim.api.nvim_create_augroup("SaseXPromptCache", { clear = true }),
+  group = vim.api.nvim_create_augroup("SaseMacroCache", { clear = true }),
   once = true,
   callback = function()
     -- Only pre-warm if sase is on PATH.
     if vim.fn.executable("sase") == 1 then
-      require("sase.xprompt").refresh()
+      require("sase.macro").refresh()
     end
   end,
 })

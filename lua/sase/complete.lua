@@ -1,6 +1,6 @@
 -- <C-t> completion dispatcher.
 --
--- Uses the xprompt LSP as the normal path when available, with the
+-- Uses the macro LSP as the normal path when available, with the
 -- picker dispatcher kept for fallback and browse UI.
 
 local M = {}
@@ -26,10 +26,10 @@ local function picker_trigger()
 	local token_text = info and info.text or nil
 	local kind = _token.classify(token_text)
 
-	if kind == "xprompt" then
+	if kind == "macro" then
 		local origin_win = vim.api.nvim_get_current_win()
 		local was_insert = vim.fn.mode() == "i" or vim.fn.mode() == "ic"
-		require("sase.complete.xprompt").pick({
+		require("sase.complete.macro").pick({
 			origin_win = origin_win,
 			was_insert = was_insert,
 			token = info,
@@ -49,7 +49,7 @@ local function picker_trigger()
 	end
 
 	if kind == "project_tag" then
-		-- `+project` completion prefers the xprompt LSP, but the picker
+		-- `+project` completion prefers the macro LSP, but the picker
 		-- fallback must also work without a server (or when native
 		-- completion is disabled, e.g. nvim-cmp owns it): offer projects
 		-- from `sase project list --json` and insert `+name` in place.
@@ -106,7 +106,7 @@ function M.setup(opts)
 		local lhs = type(opts.keymap) == "string" and opts.keymap or "<C-t>"
 		vim.keymap.set("i", lhs, function()
 			M.trigger()
-		end, { silent = true, desc = "sase completion (xprompt / project-tag / file / file-history)" })
+		end, { silent = true, desc = "sase completion (macro / project-tag / file / file-history)" })
 	end
 end
 

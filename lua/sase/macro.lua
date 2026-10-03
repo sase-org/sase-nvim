@@ -1,31 +1,31 @@
--- XPrompt browse picker module.
+-- Macro browse picker module.
 -- Normal inline completion is LSP-backed. The browse surfaces still fetch via
--- `sase xprompt list` until the server exposes a catalog/browse request.
+-- `sase macro list` until the server exposes a catalog/browse request.
 
 local M = {}
 
---- @class SaseXPromptInput
+--- @class SaseMacroInput
 --- @field name string
 --- @field type string
 --- @field required boolean
 --- @field default string|number|boolean|nil
 --- @field description string|nil
 
---- @class SaseXPromptItem
+--- @class SaseMacroItem
 --- @field name string
---- @field type "xprompt"|"workflow"
---- @field kind? "xprompt"|"embeddable_workflow"|"standalone_workflow"
+--- @field type "macro"|"workflow"
+--- @field kind? "macro"|"embeddable_workflow"|"standalone_workflow"
 --- @field prefix? string
 --- @field insertion? string
 --- @field is_skill? boolean
 --- @field description string|nil
 --- @field source string|nil
---- @field inputs SaseXPromptInput[]
+--- @field inputs SaseMacroInput[]
 --- @field preview string
 --- @field _slash_skill_completion? boolean
 
 --- Cached items from last fetch.
---- @type SaseXPromptItem[]|nil
+--- @type SaseMacroItem[]|nil
 local _cache = nil
 
 --- @param text string|nil
@@ -113,8 +113,8 @@ local function single_line_text(value)
 	return table.concat(parts, " ")
 end
 
---- @param item SaseXPromptItem
---- @return SaseXPromptItem
+--- @param item SaseMacroItem
+--- @return SaseMacroItem
 local function slash_skill_item(item)
 	local copy = {}
 	for key, value in pairs(item) do
@@ -124,9 +124,9 @@ local function slash_skill_item(item)
 	return copy
 end
 
---- Return the reference text to insert/display for an xprompt item.
---- Falls back to legacy fields for older `sase xprompt list` output.
---- @param item SaseXPromptItem
+--- Return the reference text to insert/display for a macro item.
+--- Falls back to legacy fields for older `sase macro list` output.
+--- @param item SaseMacroItem
 --- @return string
 local function item_insertion(item)
 	if item._slash_skill_completion then
@@ -142,8 +142,8 @@ local function item_insertion(item)
 	return prefix .. item.name
 end
 
---- Return whether *reference* names a cached xprompt whose inputs are all
---- optional (an "optional-only" xprompt). Optional-only xprompts complete to
+--- Return whether *reference* names a cached macro whose inputs are all
+--- optional (an "optional-only" macro). Optional-only macros complete to
 --- `#name ` with a deliberate trailing spacer, so the optional-spacer handler
 --- may replace that space with a colon. No-input references, references with any
 --- required input, unknown references, and a cold catalog all return false so
@@ -171,7 +171,7 @@ local function reference_is_optional_only(reference)
 	return false
 end
 
---- @param item SaseXPromptItem
+--- @param item SaseMacroItem
 --- @return boolean
 local function is_standalone(item)
 	return item.kind == "standalone_workflow"
@@ -179,7 +179,7 @@ local function is_standalone(item)
 		or (type(item.insertion) == "string" and item.insertion:sub(1, 2) == "#!")
 end
 
---- @param item SaseXPromptItem
+--- @param item SaseMacroItem
 --- @return string
 local function item_kind_label(item)
 	if item._slash_skill_completion then
@@ -191,10 +191,13 @@ local function item_kind_label(item)
 	if item.kind == "embeddable_workflow" or item.type == "workflow" then
 		return "Workflow"
 	end
-	return "XPrompt"
+	-- The only remaining type/kind values are `macro` and the legacy
+	-- `xprompt` spelling, which the catalog still accepts; both label as Macro.
+	-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+	return "Macro"
 end
 
---- @param inp SaseXPromptInput
+--- @param inp SaseMacroInput
 --- @return string
 local function input_entry_label(inp)
 	if inp.required then
@@ -203,7 +206,7 @@ local function input_entry_label(inp)
 	return inp.name .. "?"
 end
 
---- @param inp SaseXPromptInput
+--- @param inp SaseMacroInput
 --- @return string
 local function input_display_label(inp)
 	if inp.required then
@@ -214,7 +217,7 @@ local function input_display_label(inp)
 	return inp.name .. suffix
 end
 
---- @param inp SaseXPromptInput
+--- @param inp SaseMacroInput
 --- @return string
 local function input_detail_label(inp)
 	local label = inp.name
@@ -242,7 +245,7 @@ local function append_search_part(parts, value)
 end
 
 --- Search text used by local fallback filters and Telescope ordinal matching.
---- @param item SaseXPromptItem
+--- @param item SaseMacroItem
 --- @return string
 local function item_search_text(item)
 	local parts = {}
@@ -256,7 +259,7 @@ local function item_search_text(item)
 	return table.concat(parts, " ")
 end
 
---- @param item SaseXPromptItem
+--- @param item SaseMacroItem
 --- @param partial string
 --- @return boolean
 local function item_matches_partial(item, partial)
@@ -270,9 +273,9 @@ local function item_matches_partial(item, partial)
 	return item_search_text(item):find(partial_lower, 1, true) ~= nil
 end
 
---- @param items SaseXPromptItem[]
+--- @param items SaseMacroItem[]
 --- @param token? { text: string }
---- @return SaseXPromptItem[]
+--- @return SaseMacroItem[]
 local function filter_items_for_token(items, token)
 	if not token or not token.text or token.text == "" then
 		return items
@@ -306,10 +309,11 @@ local function filter_items_for_token(items, token)
 	return filtered
 end
 
---- Fetch all xprompts asynchronously via `sase xprompt list`.
---- @param callback fun(items: SaseXPromptItem[])
-local function fetch_xprompts(callback)
-	vim.fn.jobstart({ "sase", "xprompt", "list" }, {
+--- Fetch all macros asynchronously via `sase macro list`, falling back to
+--- `sase xprompt list` when the installed sase predates the rename.
+--- @param callback fun(items: SaseMacroItem[])
+local function fetch_with(cmd, callback, on_failure)
+	vim.fn.jobstart(cmd, {
 		stdout_buffered = true,
 		on_stdout = function(_, data)
 			if not data then
@@ -327,11 +331,23 @@ local function fetch_xprompts(callback)
 				end)
 			end
 		end,
+		on_exit = function(_, code)
+			if code ~= 0 and on_failure then
+				on_failure()
+			end
+		end,
 	})
 end
 
---- Format display text for an xprompt item (matches the TUI style).
---- @param item SaseXPromptItem
+local function fetch_macros(callback)
+	fetch_with({ "sase", "macro", "list" }, callback, function()
+		-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+		fetch_with({ "sase", "xprompt", "list" }, callback)
+	end)
+end
+
+--- Format display text for a macro item (matches the TUI style).
+--- @param item SaseMacroItem
 --- @return string
 local function format_display(item)
 	local icon = item.type == "workflow" and "⚙ " or "  "
@@ -352,8 +368,8 @@ local function format_display(item)
 	return table.concat(parts, "\n")
 end
 
---- Format a one-line display string for an xprompt item.
---- @param item SaseXPromptItem
+--- Format a one-line display string for a macro item.
+--- @param item SaseMacroItem
 --- @return string
 local function format_entry(item)
 	local icon = item.type == "workflow" and "⚙ " or "  "
@@ -373,7 +389,7 @@ local function format_entry(item)
 	return entry
 end
 
---- @param item SaseXPromptItem
+--- @param item SaseMacroItem
 --- @return string[]
 local function preview_lines(item)
 	local lines = {}
@@ -418,14 +434,14 @@ local function preview_lines(item)
 	return lines
 end
 
---- @param item SaseXPromptItem
+--- @param item SaseMacroItem
 --- @return string
 local function format_preview(item)
 	return table.concat(preview_lines(item), "\n")
 end
 
 --- Normalize legacy bare names and new catalog insertion values.
---- @param value string|SaseXPromptItem
+--- @param value string|SaseMacroItem
 --- @return string
 local function normalize_insertion(value)
 	if type(value) == "table" then
@@ -440,13 +456,13 @@ local function normalize_insertion(value)
 	return "#" .. value
 end
 
---- Insert an xprompt reference at the current cursor position (works in insert and normal mode).
+--- Insert a macro reference at the current cursor position (works in insert and normal mode).
 --- When `replace_range` is provided, the existing `[col_start, col_end)` byte range
 --- on `row` is replaced with the selected reference (used by <C-t> on a `#token` to swap the whole
 --- token, mirroring the TUI's `_replace_token_text`).
 --- When `insert_pos` is provided, uses position-exact insertion via nvim_buf_set_text
 --- to avoid cursor drift from mode transitions and Telescope open/close.
---- @param value string|SaseXPromptItem
+--- @param value string|SaseMacroItem
 --- @param insert_pos? { row: integer, col: integer }  0-indexed (row, col)
 --- @param replace_range? { row: integer, col_start: integer, col_end: integer }
 local function insert_at_cursor(value, insert_pos, replace_range)
@@ -506,7 +522,7 @@ local function restore_insert_mode(origin_win, end_pos)
 	end)
 end
 
---- Open the xprompt picker. Prefers Telescope if available, otherwise
+--- Open the macro picker. Prefers Telescope if available, otherwise
 --- falls back to vim.ui.select.
 --- @param opts? { on_cancel?: fun() }
 function M.pick(opts)
@@ -515,7 +531,7 @@ function M.pick(opts)
 	local function show(items)
 		items = filter_items_for_token(items, opts.token)
 		if #items == 0 then
-			vim.notify("No xprompts found", vim.log.levels.WARN)
+			vim.notify("No macros found", vim.log.levels.WARN)
 			if opts.on_cancel then
 				opts.on_cancel()
 			end
@@ -526,7 +542,7 @@ function M.pick(opts)
 		local has_telescope, _ = pcall(require, "telescope")
 		if has_telescope then
 			local ok, ext = pcall(function()
-				return require("telescope").extensions.sase.xprompts
+				return require("telescope").extensions.sase.macros
 			end)
 			if ok and ext then
 				ext({
@@ -543,7 +559,7 @@ function M.pick(opts)
 
 		-- Fallback: vim.ui.select.
 		vim.ui.select(items, {
-			prompt = "Select XPrompt> ",
+			prompt = "Select Macro> ",
 			format_item = function(item)
 				return format_entry(item)
 			end,
@@ -560,23 +576,23 @@ function M.pick(opts)
 	if _cache then
 		show(_cache)
 	else
-		fetch_xprompts(show)
+		fetch_macros(show)
 	end
 end
 
---- Refresh the xprompt cache.
+--- Refresh the macro cache.
 function M.refresh()
-	fetch_xprompts(function(_) end)
+	fetch_macros(function(_) end)
 end
 
---- Clear the cached xprompt list so the next pick re-fetches.
+--- Clear the cached macro list so the next pick re-fetches.
 function M.clear_cache()
 	_cache = nil
 end
 
 --- Test seam: replace the cached catalog directly. Production code populates
---- the cache via `fetch_xprompts`/`M.refresh`.
---- @param items SaseXPromptItem[]|nil
+--- the cache via `fetch_macros`/`M.refresh`.
+--- @param items SaseMacroItem[]|nil
 function M._set_cache(items)
 	_cache = items
 end
@@ -587,7 +603,9 @@ M.reference_is_optional_only = reference_is_optional_only
 M._format_display = format_display
 M._format_entry = format_entry
 M._insert_at_cursor = insert_at_cursor
-M._fetch_xprompts = fetch_xprompts
+M._fetch_macros = fetch_macros
+-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+M._fetch_xprompts = fetch_macros
 M._restore_insert_mode = restore_insert_mode
 M._item_insertion = item_insertion
 M._item_kind_label = item_kind_label

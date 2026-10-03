@@ -1,5 +1,5 @@
 -- Shared picker plumbing for the <C-t> completion dispatcher.
--- Each per-mode module (xprompt / file / file_history) reuses these
+-- Each per-mode module (macro / file / file_history) reuses these
 -- helpers to insert the chosen item at the cursor and return to insert
 -- mode the way the user expects.
 

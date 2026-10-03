@@ -1,10 +1,10 @@
--- Headless tests for lua/sase/xprompt_spacer.lua.
--- Run: nvim --headless -u NONE -c "set rtp+=." -l tests/xprompt_spacer.lua
+-- Headless tests for lua/sase/macro_spacer.lua.
+-- Run: nvim --headless -u NONE -c "set rtp+=." -l tests/macro_spacer.lua
 
 package.path = vim.fn.getcwd() .. "/lua/?.lua;" .. vim.fn.getcwd() .. "/lua/?/init.lua;" .. package.path
 
-local spacer = require("sase.xprompt_spacer")
-local xprompt = require("sase.xprompt")
+local spacer = require("sase.macro_spacer")
+local macro = require("sase.macro")
 
 local failures = 0
 
@@ -43,19 +43,19 @@ same(spacer.plan_colon("/skill ", 7, always(true)), nil, "plan nil for a slash-s
 
 -- --- Catalog predicate: reference_is_optional_only ------------------------ #
 
-xprompt._set_cache({
+macro._set_cache({
 	{
 		name = "optional",
 		insertion = "#optional",
-		type = "xprompt",
+		type = "macro",
 		inputs = { { name = "topic", type = "word", required = false } },
 		preview = "",
 	},
-	{ name = "plain", insertion = "#plain", type = "xprompt", inputs = {}, preview = "" },
+	{ name = "plain", insertion = "#plain", type = "macro", inputs = {}, preview = "" },
 	{
 		name = "mixed",
 		insertion = "#mixed",
-		type = "xprompt",
+		type = "macro",
 		inputs = { { name = "a", type = "word", required = false }, { name = "b", type = "path", required = true } },
 		preview = "",
 	},
@@ -69,14 +69,14 @@ xprompt._set_cache({
 	},
 })
 
-same(xprompt.reference_is_optional_only("#optional"), true, "predicate: optional-only is true")
-same(xprompt.reference_is_optional_only("#plain"), false, "predicate: no-input is false")
-same(xprompt.reference_is_optional_only("#mixed"), false, "predicate: any required input is false")
-same(xprompt.reference_is_optional_only("#!bang"), true, "predicate: standalone optional-only is true")
-same(xprompt.reference_is_optional_only("#unknown"), false, "predicate: unknown reference is false")
+same(macro.reference_is_optional_only("#optional"), true, "predicate: optional-only is true")
+same(macro.reference_is_optional_only("#plain"), false, "predicate: no-input is false")
+same(macro.reference_is_optional_only("#mixed"), false, "predicate: any required input is false")
+same(macro.reference_is_optional_only("#!bang"), true, "predicate: standalone optional-only is true")
+same(macro.reference_is_optional_only("#unknown"), false, "predicate: unknown reference is false")
 
-xprompt._set_cache(nil)
-same(xprompt.reference_is_optional_only("#optional"), false, "predicate: cold catalog is false")
+macro._set_cache(nil)
+same(macro.reference_is_optional_only("#optional"), false, "predicate: cold catalog is false")
 
 -- --- supports_buffer: attach eligibility --------------------------------- #
 
@@ -115,15 +115,15 @@ local function set_line(buf, line, row, col)
 end
 
 spacer.setup({})
-xprompt._set_cache({
+macro._set_cache({
 	{
 		name = "optional",
 		insertion = "#optional",
-		type = "xprompt",
+		type = "macro",
 		inputs = { { name = "topic", type = "word", required = false } },
 		preview = "",
 	},
-	{ name = "plain", insertion = "#plain", type = "xprompt", inputs = {}, preview = "" },
+	{ name = "plain", insertion = "#plain", type = "macro", inputs = {}, preview = "" },
 })
 
 -- Optional-only `#name ` + `:` replaces the spacer in place.
@@ -135,7 +135,7 @@ do
 	same(vim.api.nvim_win_get_cursor(0), { 1, 10 }, "e2e cursor sits after the colon")
 end
 
--- A no-input xprompt keeps its trailing space; the colon just inserts.
+-- A no-input macro keeps its trailing space; the colon just inserts.
 do
 	local buf = make_buffer("sase", tmp .. "_e2.sase")
 	set_line(buf, "#plain ", 1, 0)
@@ -169,7 +169,7 @@ end
 
 -- A cold catalog does nothing rather than guessing.
 do
-	xprompt._set_cache(nil)
+	macro._set_cache(nil)
 	local buf = make_buffer("sase", tmp .. "_e6.sase")
 	set_line(buf, "#optional ", 1, 0)
 	type_in(buf, "A:")
@@ -177,7 +177,7 @@ do
 end
 
 if failures > 0 then
-	error(string.format("%d xprompt_spacer test(s) failed", failures), 0)
+	error(string.format("%d macro_spacer test(s) failed", failures), 0)
 end
 
-print("xprompt_spacer: all tests passed")
+print("macro_spacer: all tests passed")

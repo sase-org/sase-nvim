@@ -1,9 +1,9 @@
 -- Add a definable-term underline to glossary semantic tokens from the SASE
--- xprompt LSP while leaving the colorscheme-owned token color alone.
+-- macro LSP while leaving the colorscheme-owned token color alone.
 
 local M = {}
 
-local CLIENT_NAME = "sase-xprompt-lsp"
+local CLIENT_NAME = "sase-macro-lsp"
 local GROUP = "SaseGlossaryHighlight"
 local HIGHLIGHT_GROUP = "SaseGlossaryTerm"
 local GLOSSARY_TOKEN_TYPE = "type"
@@ -42,7 +42,7 @@ local function token_has_no_modifiers(token)
 end
 
 local function is_glossary_token(token)
-	-- The SASE xprompt LSP keeps glossary phrases as unmodified standard
+	-- The SASE macro LSP keeps glossary phrases as unmodified standard
 	-- `type` tokens. Argument highlighting added later uses other standard
 	-- token types, so modifier-bearing or non-type tokens must not pick up the
 	-- glossary underline.

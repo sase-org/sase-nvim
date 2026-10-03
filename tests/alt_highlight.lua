@@ -1,7 +1,7 @@
 -- Headless tests for lua/sase/alt_highlight.lua.
 -- Run: nvim --headless -u NONE -c "set rtp+=." -l tests/alt_highlight.lua
 --
--- Highlighting is an LSP-token overlay: the xprompt LSP owns the alternation
+-- Highlighting is an LSP-token overlay: the macro LSP owns the alternation
 -- grammar and this module maps tokens carrying the `alternation` modifier
 -- onto the long-lived `SaseAlt*` groups via `LspTokenUpdate`.
 
@@ -108,7 +108,7 @@ local original_highlight_token = vim.lsp.semantic_tokens.highlight_token
 local original_get_client_by_id = vim.lsp.get_client_by_id
 local highlighted = {}
 local clients = {
-	[7] = { name = "sase-xprompt-lsp" },
+	[7] = { name = "sase-macro-lsp" },
 	[8] = { name = "foreign-lsp" },
 }
 
@@ -197,10 +197,10 @@ same(alt._config().enabled, true, "legacy filetype keys are accepted")
 require("sase").setup({
 	lsp = { enabled = false },
 	glossary_highlight = { enabled = false },
-	xprompt_highlight = { enabled = false },
+	macro_highlight = { enabled = false },
 	alt_highlight = { enabled = false },
 	alt_editing = { enabled = false },
-	xprompt_spacer = { enabled = false },
+	macro_spacer = { enabled = false },
 })
 same(alt._config().enabled, false, "top-level setup forwards alt_highlight opts")
 

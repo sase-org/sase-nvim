@@ -1,11 +1,11 @@
 -- Alternation highlighting for the `%{A | B}` alt brace shorthand.
 --
--- Highlighting comes from the SASE xprompt LSP, not from a Lua copy of the
+-- Highlighting comes from the SASE macro LSP, not from a Lua copy of the
 -- alternation grammar. The server scans each prompt for alternations outside
 -- literal zones and emits standard semantic tokens carrying the `alternation`
 -- modifier; this module overlays the long-lived `SaseAlt*` groups on those
 -- tokens via `LspTokenUpdate`, in the style of
--- `sase.xprompt_semantic_highlight`:
+-- `sase.macro_semantic_highlight`:
 --
 --   * `operator` without `separator` -> SaseAltDelimiter
 --   * `separator`                    -> SaseAltSeparator
@@ -20,7 +20,7 @@
 
 local M = {}
 
-local CLIENT_NAME = "sase-xprompt-lsp"
+local CLIENT_NAME = "sase-macro-lsp"
 local GROUP = "SaseAltHighlight"
 
 -- Stable highlight groups with default links so user overrides win.
