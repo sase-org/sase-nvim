@@ -43,7 +43,7 @@ same(
 same(
 	lsp._resolve_cmd(
 		{},
-		-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+		-- legacy xprompt spelling; retired alias, always accepted
 		{ SASE_XPROMPT_LSP_CMD = "cargo run -p sase_xprompt_lsp --" },
 		executable({}),
 		available(false)
@@ -56,7 +56,7 @@ same(
 		{},
 		{
 			SASE_MACRO_LSP_CMD = "new-lsp --stdio",
-			-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+			-- legacy xprompt spelling; retired alias, always accepted
 			SASE_XPROMPT_LSP_CMD = "old-lsp --stdio",
 		},
 		executable({}),
@@ -75,7 +75,7 @@ same(
 	lsp._resolve_cmd(
 		{},
 		{},
-		-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+		-- legacy xprompt spelling; retired alias, always accepted
 		executable({ sase = true, ["sase-xprompt-lsp"] = true }),
 		available(false)
 	),
@@ -183,13 +183,13 @@ same(
 	".macros markdown is not auto-associated"
 )
 same(
-	-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+	-- legacy xprompt spelling; retired alias, always accepted
 	lsp._is_supported_markdown_path("/tmp/project/sase/xprompts/foo.md"),
 	true,
 	"legacy canonical path stays supported"
 )
 same(
-	-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+	-- legacy xprompt spelling; retired alias, always accepted
 	lsp._is_supported_markdown_path("/tmp/project/src/sase/default_xprompts/research_swarm.md"),
 	true,
 	"legacy packaged path stays supported"

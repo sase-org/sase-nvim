@@ -89,8 +89,7 @@ Automatically configures `yamlls` with schema associations for sase YAML files:
 - **Config schema** — Applied to project `sase/sase.yml`, global `sase_*.yml`, and
   `src/sase/default_config.yml`
 - **Macro workflow schema** — Applied to YAML files under canonical `sase/macros/`, plus the
-  pre-rename `sase/xprompts/` layout, which stays associated until the `legacy_xprompt_syntax`
-  sunset flag is removed
+  pre-rename `sase/xprompts/` layout, which stays associated as a retired alias
 
 New project content belongs under `sase/sase.yml` and `sase/macros/`. The schema path
 resolves via `sase path macros-schema`, falling back to `sase path xprompts-schema` on older
@@ -104,9 +103,8 @@ The plugin can start the SASE macro language server for git commit, `sase`, `sas
 Markdown buffers. Plain Markdown prose files are skipped by default. Markdown buffers are eligible when they are under
 the canonical `sase/macros/` directory, under packaged `default_macros/`, or when their filename matches SASE prompt
 editor temporary files such as `sase_ace_prompt_*.md` or `sase_prompt_*.md`. The pre-rename
-`sase/xprompts/` and packaged `default_xprompts/` layouts stay eligible until the
-`legacy_xprompt_syntax` sunset flag is removed. LSP-backed completion is the normal path
-after `setup()`:
+`sase/xprompts/` and packaged `default_xprompts/` layouts stay eligible as retired aliases. LSP-backed completion is
+the normal path after `setup()`:
 
 ```lua
 require("sase").setup({
@@ -565,14 +563,13 @@ use `"picker"`.
 | `:SaseFileHistoryRefresh` | Refresh the cached `sase file-history list` data |
 
 `:SaseXPrompts` and `:SaseXPromptsRefresh` remain as deprecated aliases that warn once
-per name; they are removed when the `legacy_xprompt_syntax` sunset flag is removed (see
-[Migrating from xprompts](#migrating-from-xprompts)).
+per name (see [Migrating from xprompts](#migrating-from-xprompts)).
 
 ## Migrating from xprompts
 
 SASE renamed reusable prompt definitions from **xprompts** to **macros**. Update your
 config to the new spellings; the old ones keep working with a one-time deprecation
-warning until the `legacy_xprompt_syntax` sunset flag is removed:
+warning:
 
 | Old                                | New                                  |
 | ---------------------------------- | ------------------------------------ |

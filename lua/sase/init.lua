@@ -6,7 +6,7 @@ local deprecated_key_warned = {}
 
 local function resolve_setup_key(opts, new_name, old_name)
 	local new_value = opts[new_name]
-	-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+	-- legacy xprompt spelling; retired alias, always accepted
 	local old_value = opts[old_name]
 	if new_value ~= nil and old_value ~= nil then
 		error(string.format("sase-nvim: supply only one of `%s` or `%s`", new_name, old_name), 0)

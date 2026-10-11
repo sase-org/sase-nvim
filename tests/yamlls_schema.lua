@@ -18,7 +18,7 @@ local original_create_augroup = vim.api.nvim_create_augroup
 local schema_paths = {
 	["config-schema"] = "/tmp/sase.schema.json",
 	["macros-schema"] = "/tmp/workflow.schema.json",
-	-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+	-- legacy xprompt spelling; retired alias, always accepted
 	["xprompts-schema"] = "/tmp/legacy-workflow.schema.json",
 }
 local config_calls = {}
@@ -123,7 +123,7 @@ end
 for _, glob in ipairs({
 	"**/sase/macros/**/*.yml",
 	"**/sase/macros/**/*.yaml",
-	-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+	-- legacy xprompt spelling; retired alias, always accepted
 	"**/sase/xprompts/**/*.yml",
 	"**/sase/xprompts/**/*.yaml",
 }) do
@@ -195,7 +195,7 @@ vim.fn.jobstart = function(cmd, opts)
 	elseif cmd[3] == "config-schema" then
 		opts.on_stdout(nil, { "/tmp/sase.schema.json" })
 	elseif cmd[3] == "xprompts-schema" then
-		-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+		-- legacy xprompt spelling; retired alias, always accepted
 		opts.on_stdout(nil, { "/tmp/legacy-workflow.schema.json" })
 	else
 		error("unexpected schema request: " .. vim.inspect(cmd))

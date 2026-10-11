@@ -328,7 +328,7 @@ end
 return telescope.register_extension({
 	exports = {
 		macros = macros_picker,
-		-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+		-- legacy xprompt spelling; retired alias, always accepted
 		xprompts = macros_picker,
 		file_history = file_history_picker,
 		file = file_picker,

@@ -78,7 +78,7 @@ function M._resolve_cmd(opts, env, executable_fn, sase_lsp_available_fn)
 		return override
 	end
 
-	-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+	-- legacy xprompt spelling; retired alias, always accepted
 	local legacy_override = normalize_cmd(env.SASE_XPROMPT_LSP_CMD)
 	if legacy_override then
 		return legacy_override
@@ -92,7 +92,7 @@ function M._resolve_cmd(opts, env, executable_fn, sase_lsp_available_fn)
 		return { "sase-macro-lsp" }
 	end
 
-	-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+	-- legacy xprompt spelling; retired alias, always accepted
 	if executable_fn("sase-xprompt-lsp") then
 		return { "sase-xprompt-lsp" }
 	end
@@ -188,10 +188,10 @@ local function is_supported_markdown_path(path)
 		return false
 	end
 	return has_path_sequence(path, { "sase", "macros" })
-		-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+		-- legacy xprompt spelling; retired alias, always accepted
 		or has_path_sequence(path, { "sase", "xprompts" })
 		or has_path_component(path, "default_macros")
-		-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+		-- legacy xprompt spelling; retired alias, always accepted
 		or has_path_component(path, "default_xprompts")
 		or has_prompt_temp_name(path)
 end

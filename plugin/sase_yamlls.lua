@@ -78,7 +78,7 @@ end)
 
 -- macro workflow files under the canonical project layout, plus the legacy
 -- layout for definitions written before the rename
--- legacy xprompt spelling; remove with legacy_xprompt_syntax
+-- legacy xprompt spelling; retired alias, always accepted
 resolve_schema("macros-schema", function(schema)
   apply_schema(schema, {
     "**/sase/macros/**/*.yml",

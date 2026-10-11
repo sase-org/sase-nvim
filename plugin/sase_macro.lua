@@ -17,7 +17,7 @@ vim.api.nvim_create_user_command("SaseMacrosRefresh", function()
   vim.notify("macro cache refreshed", vim.log.levels.INFO)
 end, { desc = "Refresh sase macro cache" })
 
--- legacy xprompt spelling; remove with legacy_xprompt_syntax
+-- legacy xprompt spelling; retired alias, always accepted
 local deprecated_command_warned = {}
 local function deprecated_command(old_name, new_name)
   if deprecated_command_warned[old_name] then
@@ -30,13 +30,13 @@ local function deprecated_command(old_name, new_name)
   )
 end
 
--- legacy xprompt spelling; remove with legacy_xprompt_syntax
+-- legacy xprompt spelling; retired alias, always accepted
 vim.api.nvim_create_user_command("SaseXPrompts", function()
   deprecated_command("SaseXPrompts", "SaseMacros")
   require("sase.macro").pick()
 end, { desc = "Deprecated alias of :SaseMacros" })
 
--- legacy xprompt spelling; remove with legacy_xprompt_syntax
+-- legacy xprompt spelling; retired alias, always accepted
 vim.api.nvim_create_user_command("SaseXPromptsRefresh", function()
   deprecated_command("SaseXPromptsRefresh", "SaseMacrosRefresh")
   require("sase.macro").refresh()

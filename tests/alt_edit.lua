@@ -124,7 +124,7 @@ same(
 	"markdown under canonical sase/macros/ eligible"
 )
 same(
-	-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+	-- legacy xprompt spelling; retired alias, always accepted
 	alt.supports_buffer(make_buffer("markdown", "/work/sase/xprompts/" .. vim.fn.fnamemodify(tmp, ":t") .. ".md")),
 	true,
 	"markdown under legacy sase/xprompts/ stays eligible"

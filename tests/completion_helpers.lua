@@ -61,7 +61,7 @@ local items = {
 	},
 }
 
--- legacy xprompt spelling; remove with legacy_xprompt_syntax
+-- legacy xprompt spelling; retired alias, always accepted
 local legacy_item = {
 	name = "legacy",
 	type = "xprompt",

@@ -13,7 +13,7 @@ local function resolve_cmd()
 	if macro_cmd and macro_cmd ~= "" then
 		return vim.fn.split(macro_cmd)
 	end
-	-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+	-- legacy xprompt spelling; retired alias, always accepted
 	local legacy_cmd = vim.env.SASE_XPROMPT_LSP_CMD
 	if legacy_cmd and legacy_cmd ~= "" then
 		return vim.fn.split(legacy_cmd)

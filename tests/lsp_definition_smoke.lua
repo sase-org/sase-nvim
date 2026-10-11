@@ -9,7 +9,7 @@ local function macro_lsp_crate(core_manifest)
 	if vim.fn.filereadable(crates_dir .. "/sase_macro_lsp/Cargo.toml") == 1 then
 		return "sase_macro_lsp"
 	end
-	-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+	-- legacy xprompt spelling; retired alias, always accepted
 	return "sase_xprompt_lsp"
 end
 
@@ -19,7 +19,7 @@ local function resolve_cmd()
 		return vim.fn.split(macro_cmd)
 	end
 
-	-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+	-- legacy xprompt spelling; retired alias, always accepted
 	local legacy_cmd = vim.env.SASE_XPROMPT_LSP_CMD
 	if legacy_cmd and legacy_cmd ~= "" then
 		return vim.fn.split(legacy_cmd)
@@ -38,7 +38,7 @@ local function resolve_cmd()
 		return { "sase-macro-lsp" }
 	end
 
-	-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+	-- legacy xprompt spelling; retired alias, always accepted
 	if vim.fn.executable("sase-xprompt-lsp") == 1 then
 		return { "sase-xprompt-lsp" }
 	end

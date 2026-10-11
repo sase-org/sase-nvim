@@ -193,7 +193,7 @@ local function item_kind_label(item)
 	end
 	-- The only remaining type/kind values are `macro` and the legacy
 	-- `xprompt` spelling, which the catalog still accepts; both label as Macro.
-	-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+	-- legacy xprompt spelling; retired alias, always accepted
 	return "Macro"
 end
 
@@ -341,7 +341,7 @@ end
 
 local function fetch_macros(callback)
 	fetch_with({ "sase", "macro", "list" }, callback, function()
-		-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+		-- legacy xprompt spelling; retired alias, always accepted
 		fetch_with({ "sase", "xprompt", "list" }, callback)
 	end)
 end
@@ -604,7 +604,7 @@ M._format_display = format_display
 M._format_entry = format_entry
 M._insert_at_cursor = insert_at_cursor
 M._fetch_macros = fetch_macros
--- legacy xprompt spelling; remove with legacy_xprompt_syntax
+-- legacy xprompt spelling; retired alias, always accepted
 M._fetch_xprompts = fetch_macros
 M._restore_insert_mode = restore_insert_mode
 M._item_insertion = item_insertion

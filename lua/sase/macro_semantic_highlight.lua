@@ -15,7 +15,7 @@ local DEFAULT_LINKS = {
 	SaseMacroArgOperator = "Comment",
 }
 
--- legacy xprompt spelling; remove with legacy_xprompt_syntax
+-- legacy xprompt spelling; retired alias, always accepted
 local LEGACY_GROUPS = {
 	SaseMacroArgKey = "SaseXpromptArgKey",
 	SaseMacroArgOperator = "SaseXpromptArgOperator",
@@ -102,7 +102,7 @@ end
 
 function M.define_highlights()
 	for group, link in pairs(DEFAULT_LINKS) do
-		-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+		-- legacy xprompt spelling; retired alias, always accepted
 		local legacy = LEGACY_GROUPS[group]
 		local legacy_hl = get_hl(legacy)
 		vim.api.nvim_set_hl(0, group, { link = link, default = true })
@@ -124,7 +124,7 @@ end
 --- only the legacy name carries a user override (e.g. set after setup), in
 --- which case the legacy group is applied so the override takes effect.
 local function effective_group(group)
-	-- legacy xprompt spelling; remove with legacy_xprompt_syntax
+	-- legacy xprompt spelling; retired alias, always accepted
 	local legacy = LEGACY_GROUPS[group]
 	if legacy == nil then
 		return group

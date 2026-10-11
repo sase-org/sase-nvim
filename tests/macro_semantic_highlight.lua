@@ -32,7 +32,7 @@ macro.setup({})
 same(get_hl("SaseMacroArgKey").link, "Identifier", "SaseMacroArgKey default link")
 same(get_hl("SaseMacroArgOperator").link, "Comment", "SaseMacroArgOperator default link")
 
--- legacy xprompt spelling; remove with legacy_xprompt_syntax
+-- legacy xprompt spelling; retired alias, always accepted
 same(get_hl("SaseXpromptArgKey").link, "SaseMacroArgKey", "legacy key group links to the canonical group")
 same(
 	get_hl("SaseXpromptArgOperator").link,
@@ -47,7 +47,7 @@ same(overridden_hl.bold, true, "user-defined SaseMacroArgKey survives default re
 same(overridden_hl.link, nil, "default refresh does not overwrite user SaseMacroArgKey")
 
 -- --- legacy group overrides -----------------------------------------------
--- legacy xprompt spelling; remove with legacy_xprompt_syntax
+-- legacy xprompt spelling; retired alias, always accepted
 
 local function clear_hl(name)
 	vim.cmd("highlight clear " .. name)
@@ -136,7 +136,7 @@ macro._on_lsp_token_update({
 same(#highlighted, 1, "sase operator token is highlighted")
 same(highlighted[1].group, "SaseMacroArgOperator", "operator group is applied")
 
--- legacy xprompt spelling; remove with legacy_xprompt_syntax
+-- legacy xprompt spelling; retired alias, always accepted
 reset_calls()
 vim.api.nvim_set_hl(0, "SaseXpromptArgKey", { bold = true })
 macro._on_lsp_token_update({
@@ -183,7 +183,7 @@ require("sase").setup({
 same(macro._config().enabled, false, "top-level setup forwards macro_highlight opts")
 
 -- --- legacy setup keys ------------------------------------------------------
--- legacy xprompt spelling; remove with legacy_xprompt_syntax
+-- legacy xprompt spelling; retired alias, always accepted
 
 local original_notify = vim.notify
 local deprecation_warnings = {}
